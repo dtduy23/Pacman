@@ -1,4 +1,6 @@
 import pygame
+from pathlib import Path
+
 # Game constants
 WALL = '#'
 PLAYER = 'P'
@@ -30,3 +32,6 @@ YELLOW = (255, 255, 0)
 
 # Game settings
 SPEED = 100
+
+# Map direction
+MAP_DIR = str(Path(__file__).parent.parent / "map" / "map.txt")

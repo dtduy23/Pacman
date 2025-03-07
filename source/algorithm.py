@@ -5,6 +5,7 @@ from collections import deque
 import heapq
 import time
 import os
+from pathlib import Path
 
 def simulate_ghost_movement(game_map, path, costs, base_delay=0.1):
     """
@@ -94,7 +95,7 @@ def UCS_ghost(graph, start_pos, target_pos):
 # Test code
 if __name__ == "__main__":
     # Load map and create graph
-    game_map = Map.load_map(r"D:\Năm 2\Kỳ 2\csAI\project1\map\map.txt")
+    game_map = Map.load_map(MAP_DIR)
     if game_map is None:
         print("Error: Could not load map file")
         exit(1)
