@@ -85,6 +85,42 @@ def UCS_ghost(graph, start_pos, target_pos):
                 heapq.heappush(frontier, (new_cost, next_pos, prev_direction, new_path))
     
     return None, None  # No path found
+"""
+    Add any functions you need to find the path from the ghost to the player here
+"""
+def BFS_ghost(graph, start_pos, target_pos):
+    """
+    Breadth First Search algorithm for orange ghost to find path to player
+    Args:
+        graph: MapGraph object containing the game map
+        start_pos: Starting position of orange ghost (x,y)
+        target_pos: Target position (Pacman's position)
+    Returns:
+        the list of positions from ghost to player
+        the total cost of the path
+    """
+def DFS_ghost(graph, start_pos, target_pos):
+    """
+    Depth First Search algorithm for orange ghost to find path to player
+    Args:
+        graph: MapGraph object containing the game map
+        start_pos: Starting position of orange ghost (x,y)
+        target_pos: Target position (Pacman's position)
+    Returns:
+        the list of positions from ghost to player
+        the total cost of the path
+    """
+def A_star_ghost(graph, start_pos, target_pos):
+    """
+    A star algorithm for orange ghost to find path to player
+    Args:
+        graph: MapGraph object containing the game map
+        start_pos: Starting position of orange ghost (x,y)
+        target_pos: Target position (Pacman's position)
+    Returns:
+        the list of positions from ghost to player
+        the total cost of the path
+    """
 
 # # Test code
 # if __name__ == "__main__":
