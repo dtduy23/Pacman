@@ -48,21 +48,21 @@ class Map:
             print(f"Error: Map file {filename} not found")
             return None
 
-# Test code
-if __name__ == "__main__":
-    game_map = Map.load_map(r"D:\Năm 2\Kỳ 2\csAI\project1\map\maze.txt")
+# # Test code
+# if __name__ == "__main__":
+#     game_map = Map.load_map(r"D:\Năm 2\Kỳ 2\csAI\project1\map\maze.txt")
 
-    if game_map:
-        # Print map layout
-        print("\nMap Layout:")
-        for row in game_map.layout:
-            print(''.join(row))
+#     if game_map:
+#         # Print map layout
+#         print("\nMap Layout:")
+#         for row in game_map.layout:
+#             print(''.join(row))
             
-        print("\nMap Information:")
-        print(f"Dimensions: {game_map.width}x{game_map.height}")
-        print(f"Pacman position: {game_map.player_pos}")
-        print("\nGhost positions:")
-        for ghost, pos in game_map.ghost_positions.items():
-            print(f"- {ghost.capitalize()} ghost: {pos}")
-        print(f"\nHaunted points: {game_map.haunted_points}")
-        print(f"Number of dots: {game_map.dots}")
+#         print("\nMap Information:")
+#         print(f"Dimensions: {game_map.width}x{game_map.height}")
+#         print(f"Pacman position: {game_map.player_pos}")
+#         print("\nGhost positions:")
+#         for ghost, pos in game_map.ghost_positions.items():
+#             print(f"- {ghost.capitalize()} ghost: {pos}")
+#         print(f"\nHaunted points: {game_map.haunted_points}")
+#         print(f"Number of dots: {game_map.dots}")

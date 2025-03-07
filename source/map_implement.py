@@ -97,31 +97,31 @@ class MapGraph:
         current_pos, coming_from = state
         return self.graph.get((current_pos, coming_from), {})
 
-# Test code
-if __name__ == "__main__":
-    # Load the map
-    game_map = Map.load_map(r"D:\Năm 2\Kỳ 2\csAI\project1\map\maze.txt")
-    map_graph = MapGraph(game_map)
+# # Test code
+# if __name__ == "__main__":
+#     # Load the map
+#     game_map = Map.load_map(r"D:\Năm 2\Kỳ 2\csAI\project1\map\maze.txt")
+#     map_graph = MapGraph(game_map)
     
-    # Print all adjacency lists
-    print("\nComplete Adjacency List:")
-    print("------------------------")
-    for (pos, direction), neighbors in sorted(map_graph.graph.items()):
-        print(f"\nNode at position {pos} coming from direction {direction}:")
-        for next_pos, weight in neighbors.items():
-            print(f"  -> To {next_pos} with weight {weight}")
+#     # Print all adjacency lists
+#     print("\nComplete Adjacency List:")
+#     print("------------------------")
+#     for (pos, direction), neighbors in sorted(map_graph.graph.items()):
+#         print(f"\nNode at position {pos} coming from direction {direction}:")
+#         for next_pos, weight in neighbors.items():
+#             print(f"  -> To {next_pos} with weight {weight}")
     
-    # Print summary statistics
-    print("\nGraph Statistics:")
-    print(f"Total nodes (position-direction pairs): {len(map_graph.graph)}")
-    total_edges = sum(len(neighbors) for neighbors in map_graph.graph.values())
-    print(f"Total edges: {total_edges}")
+#     # Print summary statistics
+#     print("\nGraph Statistics:")
+#     print(f"Total nodes (position-direction pairs): {len(map_graph.graph)}")
+#     total_edges = sum(len(neighbors) for neighbors in map_graph.graph.values())
+#     print(f"Total edges: {total_edges}")
     
-    # Print Pacman's position and its neighbors
-    pacman_pos = map_graph.positions['player']
-    print(f"\nPacman position: {pacman_pos}")
-    for direction in DIRECTIONS:
-        print(f"\nPacman's moves coming from direction {direction}:")
-        neighbors = map_graph.graph.get((pacman_pos, direction), {})
-        for next_pos, weight in neighbors.items():
-            print(f"  -> Can move to {next_pos} with weight {weight}")
+#     # Print Pacman's position and its neighbors
+#     pacman_pos = map_graph.positions['player']
+#     print(f"\nPacman position: {pacman_pos}")
+#     for direction in DIRECTIONS:
+#         print(f"\nPacman's moves coming from direction {direction}:")
+#         neighbors = map_graph.graph.get((pacman_pos, direction), {})
+#         for next_pos, weight in neighbors.items():
+#             print(f"  -> Can move to {next_pos} with weight {weight}")
