@@ -42,49 +42,47 @@ import heapq
 
 def UCS_ghost(graph, start_pos, target_pos):
     """
-    Uniform Cost Search algorithm for orange ghost to find path to player
+    Breadth First Search algorithm for orange ghost to find path to player
     Args:
         graph: MapGraph object containing the game map
         start_pos: Starting position of orange ghost (x,y)
-        target_pos: Target position (Pacman's position) (x,y)
+        target_pos: Target position (Pacman's position)
     Returns:
-        path: List of positions from ghost to player
-        cost: Total cost of the path
+        the list of positions from ghost to player
+        the total cost of the path
     """
-    # Priority queue stores: (total_cost, current_pos, prev_direction, path)
     frontier = []
-    # Start with all possible directions
     for direction in DIRECTIONS:
         heapq.heappush(frontier, (0, start_pos, direction, [start_pos]))
     
-    # Keep track of visited states (position, coming_from_direction)
     visited = set()
+    cost_so_far = {(start_pos, direction): 0 for direction in DIRECTIONS}  # Track minimum costs
     
     while frontier:
         total_cost, current_pos, prev_direction, path = heapq.heappop(frontier)
         
-        # Check if reached target
         if current_pos == target_pos:
             return path, total_cost
             
-        # Get state identifier
         state = (current_pos, prev_direction)
         if state in visited:
             continue
             
         visited.add(state)
         
-        # Get neighbors with weights from current position and direction
         neighbors = graph.get_neighbors_with_weights((current_pos, prev_direction))
         
-        # Add neighbors to frontier
         for next_pos, weight in neighbors.items():
-            if (next_pos, prev_direction) not in visited:
-                new_cost = total_cost + weight
+            next_state = (next_pos, prev_direction)
+            new_cost = total_cost + weight
+            
+            if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
+                cost_so_far[next_state] = new_cost
                 new_path = path + [next_pos]
                 heapq.heappush(frontier, (new_cost, next_pos, prev_direction, new_path))
     
-    return None, None  # No path found
+    return None, None
+
 """
     Add any functions you need to find the path from the ghost to the player here
 """
@@ -99,6 +97,30 @@ def BFS_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
+    # Queue for BFS, storing (position, path, total_cost)
+    queue = [(start_pos, [start_pos], 0)]
+    visited = set([start_pos])  # Track visited positions
+
+    while queue:
+        current_pos, path, total_cost = queue.pop(0)
+        
+        if current_pos == target_pos:
+            return path, total_cost
+        
+        # Get neighbors with weights from current position
+        # Use any direction since BFS doesn't care about coming direction
+        neighbors = graph.get_neighbors_with_weights((current_pos, DIRECTIONS[0]))
+        
+        # Add unvisited neighbors to queue
+        for next_pos, weight in neighbors.items():
+            if next_pos not in visited:
+                visited.add(next_pos)  # Mark as visited immediately
+                new_path = path + [next_pos]
+                new_cost = total_cost + weight
+                queue.append((next_pos, new_path, new_cost))
+
+    return None, None  # No path found
+
 def DFS_ghost(graph, start_pos, target_pos):
     """
     Depth First Search algorithm for orange ghost to find path to player
@@ -110,17 +132,91 @@ def DFS_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
+    # Stack for DFS, storing (position, path, total_cost)
+    stack = [(start_pos, [start_pos], 0)]
+    visited = set()
+
+    while stack:
+        current_pos, path, total_cost = stack.pop()
+        
+        if current_pos == target_pos:
+            return path, total_cost
+            
+        if current_pos in visited:
+            continue
+            
+        visited.add(current_pos)
+        
+        # Get neighbors with weights from current position
+        # Use any direction since DFS doesn't care about coming direction
+        neighbors = graph.get_neighbors_with_weights((current_pos, DIRECTIONS[0]))
+        
+        for next_pos, weight in neighbors.items():
+            if next_pos not in visited:
+                new_path = path + [next_pos]
+                new_cost = total_cost + weight
+                stack.append((next_pos, new_path, new_cost))
+
+    return None, None  # No path found
+
+def manhattan_distance(pos1, pos2):
+    """Calculate Manhattan distance between two points"""
+    return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
 def A_star_ghost(graph, start_pos, target_pos):
     """
-    A star algorithm for orange ghost to find path to player
+    A* algorithm for ghost to find optimal path to player
     Args:
         graph: MapGraph object containing the game map
-        start_pos: Starting position of orange ghost (x,y)
+        start_pos: Starting position of ghost (x,y)
         target_pos: Target position (Pacman's position)
     Returns:
         the list of positions from ghost to player
         the total cost of the path
     """
+    # Initialize data structures
+    frontier = []
+    visited = set()
+    g_score = {}  # Cost from start to current position
+    f_score = {}  # Estimated total cost (g_score + heuristic)
+    
+    # Initialize starting positions for all directions
+    for direction in DIRECTIONS:
+        state = (start_pos, direction)
+        g_score[state] = 0
+        f_score[state] = manhattan_distance(start_pos, target_pos)
+        heapq.heappush(frontier, (f_score[state], start_pos, direction, [start_pos]))
+    
+    while frontier:
+        current_f, current_pos, prev_direction, path = heapq.heappop(frontier)
+        current_state = (current_pos, prev_direction)
+        
+        # Found target
+        if current_pos == target_pos:
+            return path, g_score[current_state]
+            
+        # Skip if already visited
+        if current_state in visited:
+            continue
+            
+        visited.add(current_state)
+        
+        # Explore neighbors
+        neighbors = graph.get_neighbors_with_weights((current_pos, prev_direction))
+        for next_pos, weight in neighbors.items():
+            next_state = (next_pos, prev_direction)
+            
+            # Calculate tentative g score
+            tentative_g = g_score[current_state] + weight
+            
+            if next_state not in g_score or tentative_g < g_score[next_state]:
+                # This path is better than any previous one
+                g_score[next_state] = tentative_g
+                f_score[next_state] = tentative_g + manhattan_distance(next_pos, target_pos)
+                new_path = path + [next_pos]
+                heapq.heappush(frontier, (f_score[next_state], next_pos, prev_direction, new_path))
+    
+    return None, None  # No path found
 
 # # Test code
 # if __name__ == "__main__":

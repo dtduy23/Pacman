@@ -1,5 +1,9 @@
 from specification import *
 
+"""
+Map class for loading and storing game map information
+"""
+
 class Map:
     def __init__(self, layout):
         self.layout = layout
@@ -7,10 +11,10 @@ class Map:
         self.width = len(layout[0])
         self.player_pos = self.find_position(PLAYER)
         self.ghost_positions = {
-            'blue': self.find_position(BLUE_GHOST),
-            'pink': self.find_position(PINK_GHOST),
-            'red': self.find_position(RED_GHOST),
-            'orange': self.find_position(ORANGE_GHOST)
+            BLUE_GHOST: self.find_position(BLUE_GHOST),
+            PINK_GHOST: self.find_position(PINK_GHOST),
+            RED_GHOST: self.find_position(RED_GHOST),
+            ORANGE_GHOST: self.find_position(ORANGE_GHOST)
         }
         self.haunted_points = self.find_all_positions(HAUNTED_POINT)
         self.dots = self.count_dots()
@@ -48,21 +52,21 @@ class Map:
             print(f"Error: Map file {filename} not found")
             return None
 
-# # Test code
-# if __name__ == "__main__":
-#     game_map = Map.load_map(r"D:\Năm 2\Kỳ 2\csAI\project1\map\maze.txt")
+# Test code
+if __name__ == "__main__":
+    game_map = Map.load_map(MAP_DIR)
 
-#     if game_map:
-#         # Print map layout
-#         print("\nMap Layout:")
-#         for row in game_map.layout:
-#             print(''.join(row))
+    if game_map:
+        # Print map layout
+        print("\nMap Layout:")
+        for row in game_map.layout:
+            print(''.join(row))
             
-#         print("\nMap Information:")
-#         print(f"Dimensions: {game_map.width}x{game_map.height}")
-#         print(f"Pacman position: {game_map.player_pos}")
-#         print("\nGhost positions:")
-#         for ghost, pos in game_map.ghost_positions.items():
-#             print(f"- {ghost.capitalize()} ghost: {pos}")
-#         print(f"\nHaunted points: {game_map.haunted_points}")
-#         print(f"Number of dots: {game_map.dots}")
+        print("\nMap Information:")
+        print(f"Dimensions: {game_map.width}x{game_map.height}")
+        print(f"Pacman position: {game_map.player_pos}")
+        print("\nGhost positions:")
+        for ghost, pos in game_map.ghost_positions.items():
+            print(f"- {ghost.capitalize()} ghost: {pos}")
+        print(f"\nHaunted points: {game_map.haunted_points}")
+        print(f"Number of dots: {game_map.dots}")

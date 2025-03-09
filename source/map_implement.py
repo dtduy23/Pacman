@@ -1,6 +1,9 @@
 from specification import *
-from map import Map
 from collections import defaultdict
+
+"""
+MapGraph class for creating a weighted graph from the game map
+"""
 
 class MapGraph:
     def __init__(self, game_map):
@@ -24,10 +27,10 @@ class MapGraph:
         
         # Check if directions are opposite
         if (dx1, dy1) == (-dx2, -dy2):
-            return 10
+            return 50
         
         # Otherwise, it's a 90 degree turn
-        return 5
+        return 27
     
     def _create_weighted_graph(self):
         # Create adjacency list with weights
