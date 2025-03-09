@@ -42,7 +42,7 @@ import heapq
 
 def UCS_ghost(graph, start_pos, target_pos):
     """
-    Breadth First Search algorithm for orange ghost to find path to player
+    Uniform Cost Search algorithm for orange ghost to find path to player
     Args:
         graph: MapGraph object containing the game map
         start_pos: Starting position of orange ghost (x,y)
@@ -51,6 +51,9 @@ def UCS_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
+    # Reset the haunted status counter
+    graph.moves_since_haunted = 0
+    
     frontier = []
     for direction in DIRECTIONS:
         heapq.heappush(frontier, (0, start_pos, direction, [start_pos]))
@@ -70,22 +73,28 @@ def UCS_ghost(graph, start_pos, target_pos):
             
         visited.add(state)
         
+        # Update haunted status when visiting a position
+        graph.update_haunted_status(current_pos)
+        
         neighbors = graph.get_neighbors_with_weights((current_pos, prev_direction))
         
         for next_pos, weight in neighbors.items():
-            next_state = (next_pos, prev_direction)
+            # Calculate new direction
+            next_direction = (
+                next_pos[0] - current_pos[0],
+                next_pos[1] - current_pos[1]
+            )
+            next_state = (next_pos, next_direction)
             new_cost = total_cost + weight
             
             if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
                 cost_so_far[next_state] = new_cost
                 new_path = path + [next_pos]
-                heapq.heappush(frontier, (new_cost, next_pos, prev_direction, new_path))
+                heapq.heappush(frontier, (new_cost, next_pos, next_direction, new_path))
     
     return None, None
 
-"""
-    Add any functions you need to find the path from the ghost to the player here
-"""
+
 def BFS_ghost(graph, start_pos, target_pos):
     """
     Breadth First Search algorithm for orange ghost to find path to player
@@ -165,56 +174,72 @@ def manhattan_distance(pos1, pos2):
 
 def A_star_ghost(graph, start_pos, target_pos):
     """
-    A* algorithm for ghost to find optimal path to player
+    A* Search algorithm for orange ghost to find path to player
     Args:
         graph: MapGraph object containing the game map
-        start_pos: Starting position of ghost (x,y)
+        start_pos: Starting position of orange ghost (x,y)
         target_pos: Target position (Pacman's position)
     Returns:
         the list of positions from ghost to player
         the total cost of the path
     """
-    # Initialize data structures
-    frontier = []
-    visited = set()
-    g_score = {}  # Cost from start to current position
-    f_score = {}  # Estimated total cost (g_score + heuristic)
+    # Reset the haunted status counter
+    graph.moves_since_haunted = 0
     
-    # Initialize starting positions for all directions
+    # Priority queue for A*, storing (f_score, g_score, position, direction, path)
+    open_set = []
     for direction in DIRECTIONS:
-        state = (start_pos, direction)
-        g_score[state] = 0
-        f_score[state] = manhattan_distance(start_pos, target_pos)
-        heapq.heappush(frontier, (f_score[state], start_pos, direction, [start_pos]))
+        heapq.heappush(open_set, (
+            manhattan_distance(start_pos, target_pos),  # f_score = g_score + h_score
+            0,  # g_score (cost so far)
+            start_pos,
+            direction,
+            [start_pos]
+        ))
     
-    while frontier:
-        current_f, current_pos, prev_direction, path = heapq.heappop(frontier)
-        current_state = (current_pos, prev_direction)
+    # Keep track of visited states and their costs
+    visited = set()
+    g_scores = {(start_pos, direction): 0 for direction in DIRECTIONS}
+    
+    while open_set:
+        f_score, g_score, current_pos, prev_direction, path = heapq.heappop(open_set)
         
-        # Found target
+        # If we reached the target
         if current_pos == target_pos:
-            return path, g_score[current_state]
-            
-        # Skip if already visited
-        if current_state in visited:
+            return path, g_score
+        
+        state = (current_pos, prev_direction)
+        if state in visited:
             continue
             
-        visited.add(current_state)
+        visited.add(state)
         
-        # Explore neighbors
+        # Update haunted status when visiting a position
+        graph.update_haunted_status(current_pos)
+        
+        # Get neighbors with weights considering haunted points
         neighbors = graph.get_neighbors_with_weights((current_pos, prev_direction))
+        
         for next_pos, weight in neighbors.items():
-            next_state = (next_pos, prev_direction)
+            # Calculate new g_score
+            new_g_score = g_score + weight
             
-            # Calculate tentative g score
-            tentative_g = g_score[current_state] + weight
+            # Calculate new state
+            next_direction = (
+                next_pos[0] - current_pos[0],
+                next_pos[1] - current_pos[1]
+            )
+            next_state = (next_pos, next_direction)
             
-            if next_state not in g_score or tentative_g < g_score[next_state]:
-                # This path is better than any previous one
-                g_score[next_state] = tentative_g
-                f_score[next_state] = tentative_g + manhattan_distance(next_pos, target_pos)
+            # If we found a better path to this state
+            if next_state not in g_scores or new_g_score < g_scores[next_state]:
+                g_scores[next_state] = new_g_score
                 new_path = path + [next_pos]
-                heapq.heappush(frontier, (f_score[next_state], next_pos, prev_direction, new_path))
+                
+                # Calculate f_score = g_score + h_score
+                f_score = new_g_score + manhattan_distance(next_pos, target_pos)
+                
+                heapq.heappush(open_set, (f_score, new_g_score, next_pos, next_direction, new_path))
     
     return None, None  # No path found
 

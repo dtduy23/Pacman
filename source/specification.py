@@ -30,8 +30,10 @@ ORANGE = (255, 165, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 
-# Game settings
-SPEED = 100
+# Weight
+STRAIGHT = 2
+TURN = 5
+BACK = 10
 
 # Map direction
 MAP_DIR = str(Path(__file__).parent.parent / "map" / "map.txt")
