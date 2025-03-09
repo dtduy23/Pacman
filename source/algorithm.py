@@ -189,59 +189,82 @@ def A_star_ghost(graph, start_pos, target_pos):
     # Priority queue for A*, storing (f_score, g_score, position, direction, path)
     open_set = []
     for direction in DIRECTIONS:
+        h_score = manhattan_distance(start_pos, target_pos)
         heapq.heappush(open_set, (
-            manhattan_distance(start_pos, target_pos),  # f_score = g_score + h_score
-            0,  # g_score (cost so far)
+            h_score,  # f_score = g_score + h_score (g_score is 0 initially)
+            0,        # g_score (cost so far)
             start_pos,
             direction,
             [start_pos]
         ))
     
-    # Keep track of visited states and their costs
-    visited = set()
+    # Keep track of best costs to reach each state
     g_scores = {(start_pos, direction): 0 for direction in DIRECTIONS}
     
+    # Keep track of visited states to avoid cycles
+    closed_set = set()
+    
     while open_set:
-        f_score, g_score, current_pos, prev_direction, path = heapq.heappop(open_set)
+        f_score, g_score, current_pos, current_direction, path = heapq.heappop(open_set)
         
         # If we reached the target
         if current_pos == target_pos:
             return path, g_score
         
-        state = (current_pos, prev_direction)
-        if state in visited:
+        # Create a state tuple that includes position and direction
+        state = (current_pos, current_direction)
+        
+        # Skip if we've already processed this state
+        if state in closed_set:
             continue
             
-        visited.add(state)
+        # Mark this state as processed
+        closed_set.add(state)
         
         # Update haunted status when visiting a position
-        graph.update_haunted_status(current_pos)
+        if hasattr(graph, 'update_haunted_status'):
+            graph.update_haunted_status(current_pos)
         
-        # Get neighbors with weights considering haunted points
-        neighbors = graph.get_neighbors_with_weights((current_pos, prev_direction))
+        # Get neighbors with weights considering current direction
+        neighbors = graph.get_neighbors_with_weights((current_pos, current_direction))
         
         for next_pos, weight in neighbors.items():
-            # Calculate new g_score
-            new_g_score = g_score + weight
-            
-            # Calculate new state
+            # Calculate new direction from current to next position
             next_direction = (
                 next_pos[0] - current_pos[0],
                 next_pos[1] - current_pos[1]
             )
+            
+            # Create the next state
             next_state = (next_pos, next_direction)
             
-            # If we found a better path to this state
+            # Skip if we've already processed this state
+            if next_state in closed_set:
+                continue
+            
+            # Calculate new g_score (total cost to reach next_pos)
+            new_g_score = g_score + weight
+            
+            # If we found a better path to this state or haven't seen it before
             if next_state not in g_scores or new_g_score < g_scores[next_state]:
+                # Update the best cost to reach this state
                 g_scores[next_state] = new_g_score
+                
+                # Create new path by appending next position
                 new_path = path + [next_pos]
                 
-                # Calculate f_score = g_score + h_score
-                f_score = new_g_score + manhattan_distance(next_pos, target_pos)
+                # Calculate heuristic (Manhattan distance to target)
+                h_score = manhattan_distance(next_pos, target_pos)
                 
-                heapq.heappush(open_set, (f_score, new_g_score, next_pos, next_direction, new_path))
+                # Calculate f_score = g_score + h_score
+                new_f_score = new_g_score + h_score
+                
+                # Add to open set with updated scores
+                heapq.heappush(open_set, (new_f_score, new_g_score, next_pos, next_direction, new_path))
     
     return None, None  # No path found
+
+
 
 # # Test code
 # if __name__ == "__main__":

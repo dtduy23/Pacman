@@ -113,9 +113,9 @@ if __name__ == "__main__":
 
     # Test each algorithm
     algorithms = {
-        "UCS": UCS_ghost,
-        "BFS": BFS_ghost,
-        "DFS": DFS_ghost,
+        # "UCS": UCS_ghost,
+        # "BFS": BFS_ghost,
+        # "DFS": DFS_ghost,
         "A*": A_star_ghost
     }
 
