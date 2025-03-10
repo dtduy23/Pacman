@@ -1,45 +1,6 @@
 from specification import *
 import heapq
 
-# def simulate_ghost_movement(game_map, path, costs, base_delay=0.1):
-#     """
-#     Simulate ghost movement with colors and variable delays based on movement costs
-#     Args:
-#         game_map: Map object containing the layout
-#         path: List of positions for ghost to follow
-#         costs: List of costs for each move
-#         base_delay: Base delay time to multiply with costs
-#     """
-#     clear = lambda: os.system('cls')
-#     map_state = [list(row) for row in game_map.layout]
-    
-#     # ANSI color codes
-#     ORANGE = '\033[93m'
-#     PATH = '\033[94m'
-#     RESET = '\033[0m'
-    
-#     for i, pos in enumerate(path):
-#         clear()
-#         x, y = pos
-        
-#         if i > 0:
-#             prev_x, prev_y = path[i-1]
-#             map_state[prev_y][prev_x] = PATH + '*' + RESET
-            
-#         map_state[y][x] = ORANGE + 'O' + RESET
-        
-#         print(f"Step {i+1}/{len(path)}")
-#         print(f"Current position: {pos}")
-#         if i > 0:q
-#             print(f"Move cost: {costs[i-1]}")
-#             print(f"Delay: {costs[i-1] * base_delay:.2f} seconds")
-#         for row in map_state:
-#             print(''.join(row))
-        
-#         # Variable delay based on move cost
-#         if i < len(path) - 1:
-#             time.sleep(costs[i] * base_delay)
-
 def UCS_ghost(graph, start_pos, target_pos):
     """
     Uniform Cost Search algorithm for orange ghost to find path to player
@@ -106,29 +67,122 @@ def BFS_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
-    # Queue for BFS, storing (position, path, total_cost)
-    queue = [(start_pos, [start_pos], 0)]
-    visited = set([start_pos])  # Track visited positions
+    # Pure BFS implementation without considering weights during search
+    queue = []
+    # Start with all possible directions
+    for direction in DIRECTIONS:
+        queue.append((start_pos, direction, [start_pos]))
+    
+    # Track visited states (position, direction)
+    visited = set()
 
     while queue:
-        current_pos, path, total_cost = queue.pop(0)
+        current_pos, current_dir, path = queue.pop(0)
         
+        # Check if we reached the target
         if current_pos == target_pos:
+            # Calculate cost after finding the path
+            total_cost = calculate_path_cost(path, graph.haunted_points)
             return path, total_cost
         
-        # Get neighbors with weights from current position
-        # Use any direction since BFS doesn't care about coming direction
-        neighbors = graph.get_neighbors_with_weights((current_pos, DIRECTIONS[0]))
+        # Create state tuple (position, direction)
+        state = (current_pos, current_dir)
+        
+        # Skip if we've already visited this state
+        if state in visited:
+            continue
+            
+        # Mark state as visited
+        visited.add(state)
+        
+        # Get all valid neighbors (ignoring weights for BFS)
+        neighbors = get_valid_neighbors(graph, current_pos, current_dir)
         
         # Add unvisited neighbors to queue
-        for next_pos, weight in neighbors.items():
-            if next_pos not in visited:
-                visited.add(next_pos)  # Mark as visited immediately
+        for next_pos, next_dir in neighbors:
+            next_state = (next_pos, next_dir)
+            
+            if next_state not in visited:
                 new_path = path + [next_pos]
-                new_cost = total_cost + weight
-                queue.append((next_pos, new_path, new_cost))
+                queue.append((next_pos, next_dir, new_path))
 
     return None, None  # No path found
+
+def get_valid_neighbors(graph, pos, direction):
+    """
+    Get valid neighbors without considering weights
+    Returns list of (next_position, next_direction) pairs
+    """
+    neighbors = []
+    
+    # Get valid neighbors from graph
+    neighbor_dict = graph.get_neighbors_with_weights((pos, direction))
+    
+    for next_pos in neighbor_dict:
+        # Calculate direction from current to next position
+        next_dir = (
+            next_pos[0] - pos[0],
+            next_pos[1] - pos[1]
+        )
+        neighbors.append((next_pos, next_dir))
+    
+    return neighbors
+
+def calculate_path_cost(path, haunted_points):
+    """
+    Calculate the cost of a path after BFS has found it
+    Applies rules:
+    - STRAIGHT (2) for going straight
+    - TURN (5) for 90 degree turns
+    - BACK (10) for 180 degree turns
+    - After haunted point, all movements cost STRAIGHT (2) for the next 20 steps
+    """
+    if len(path) <= 1:
+        return 0
+    
+    total_cost = 0
+    remaining_haunted_steps = 0
+    
+    # Track the previous direction - undefined for first step
+    prev_dir = None
+    
+    for i in range(1, len(path)):
+        # Get current and previous positions
+        prev_pos = path[i-1]
+        curr_pos = path[i]
+        
+        # Calculate current direction
+        curr_dir = (curr_pos[0] - prev_pos[0], curr_pos[1] - prev_pos[1])
+        
+        # Check if at a haunted point
+        if prev_pos in haunted_points:
+            remaining_haunted_steps = HAUNTED_POINT_INDEX # Reset counter
+        
+        # Determine cost based on turn type and haunted status
+        if remaining_haunted_steps > 0:
+            # In haunted mode, all movements cost STRAIGHT
+            cost = STRAIGHT
+            remaining_haunted_steps -= 1
+        else:
+            # Normal mode - determine turn type based on previous direction
+            if prev_dir is None:
+                # First step has no turn
+                cost = STRAIGHT
+            else:
+                # Determine turn type by comparing previous and current directions
+                if prev_dir == curr_dir:
+                    cost = STRAIGHT  # Going straight
+                elif (prev_dir[0] == -curr_dir[0] and prev_dir[1] == -curr_dir[1]):
+                    cost = BACK      # 180 degree turn
+                else:
+                    cost = TURN      # 90 degree turn
+        
+        # Store current direction for next iteration
+        prev_dir = curr_dir
+        
+        total_cost += cost
+    
+    return total_cost
 
 def DFS_ghost(graph, start_pos, target_pos):
     """
@@ -141,30 +195,47 @@ def DFS_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
-    # Stack for DFS, storing (position, path, total_cost)
-    stack = [(start_pos, [start_pos], 0)]
+    # Pure DFS implementation without considering weights during search
+    # Reset the haunted status counter
+    graph.moves_since_haunted = 0
+    
+    # Stack for DFS, storing (position, direction, path)
+    stack = []
+    for direction in DIRECTIONS:
+        stack.append((start_pos, direction, [start_pos]))
+    
+    # Track visited states (position, direction)
     visited = set()
 
     while stack:
-        current_pos, path, total_cost = stack.pop()
+        current_pos, current_dir, path = stack.pop()
         
+        # Check if we reached the target
         if current_pos == target_pos:
+            # Calculate cost after finding the path
+            total_cost = calculate_path_cost(path, graph.haunted_points)
             return path, total_cost
-            
-        if current_pos in visited:
+        
+        # Create state tuple (position, direction)
+        state = (current_pos, current_dir)
+        
+        # Skip if we've already visited this state
+        if state in visited:
             continue
             
-        visited.add(current_pos)
+        # Mark state as visited
+        visited.add(state)
         
-        # Get neighbors with weights from current position
-        # Use any direction since DFS doesn't care about coming direction
-        neighbors = graph.get_neighbors_with_weights((current_pos, DIRECTIONS[0]))
+        # Get all valid neighbors (ignoring weights for DFS path finding)
+        neighbors = get_valid_neighbors(graph, current_pos, current_dir)
         
-        for next_pos, weight in neighbors.items():
-            if next_pos not in visited:
+        # Add unvisited neighbors to stack
+        for next_pos, next_dir in neighbors:
+            next_state = (next_pos, next_dir)
+            
+            if next_state not in visited:
                 new_path = path + [next_pos]
-                new_cost = total_cost + weight
-                stack.append((next_pos, new_path, new_cost))
+                stack.append((next_pos, next_dir, new_path))
 
     return None, None  # No path found
 
@@ -183,6 +254,7 @@ def A_star_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
+    # Sử dụng cách tiếp cận giống UCS
     # Reset the haunted status counter
     graph.moves_since_haunted = 0
     
@@ -209,7 +281,13 @@ def A_star_ghost(graph, start_pos, target_pos):
         
         # If we reached the target
         if current_pos == target_pos:
-            return path, g_score
+            # Option 1: Use the g_score (computed during search)
+            # return path, g_score
+            
+            # Option 2: Recalculate cost using same method as BFS/DFS
+            # This ensures consistency across all algorithms
+            total_cost = calculate_path_cost(path, graph.haunted_points)
+            return path, total_cost
         
         # Create a state tuple that includes position and direction
         state = (current_pos, current_direction)
@@ -222,8 +300,10 @@ def A_star_ghost(graph, start_pos, target_pos):
         closed_set.add(state)
         
         # Update haunted status when visiting a position
-        if hasattr(graph, 'update_haunted_status'):
-            graph.update_haunted_status(current_pos)
+        # IMPORTANT: Either use update_haunted_status OR handle it in get_neighbors_with_weights
+        # but not both (to avoid double counting)
+        if current_pos in graph.haunted_points:
+            graph.moves_since_haunted = 0  # Reset counter
         
         # Get neighbors with weights considering current direction
         neighbors = graph.get_neighbors_with_weights((current_pos, current_direction))
@@ -263,46 +343,3 @@ def A_star_ghost(graph, start_pos, target_pos):
                 heapq.heappush(open_set, (new_f_score, new_g_score, next_pos, next_direction, new_path))
     
     return None, None  # No path found
-
-
-
-# # Test code
-# if __name__ == "__main__":
-#     # Load map and create graph
-#     game_map = Map.load_map(MAP_DIR)
-#     if game_map is None:
-#         print("Error: Could not load map file")
-#         exit(1)
-        
-#     map_graph = MapGraph(game_map)
-    
-#     # Get positions
-#     ghost_pos = map_graph.positions['ghosts']['orange']
-#     player_pos = map_graph.positions['player']
-    
-#     # Find path using UCS
-#     path, cost = UCS_ghost(map_graph, ghost_pos, player_pos)
-    
-#     if path:
-#         print("\nOrange Ghost to Pacman path found!")
-#         print(f"Starting position: {ghost_pos}")
-#         print(f"Target position: {player_pos}")
-#         print(f"Path: {' -> '.join(str(pos) for pos in path)}")
-#         print(f"Total cost: {cost}")
-        
-#         # Calculate costs for each move
-#         move_costs = []
-#         for i in range(len(path)-1):
-#             pos = path[i]
-#             next_pos = path[i+1]
-#             for direction in DIRECTIONS:
-#                 neighbors = map_graph.get_neighbors_with_weights((pos, direction))
-#                 if next_pos in neighbors:
-#                     move_costs.append(neighbors[next_pos])
-#                     break
-        
-#         # Ask user if they want to see the simulation
-#         input("\nPress Enter to start movement simulation...")
-#         simulate_ghost_movement(game_map, path, move_costs)
-#     else:
-#         print("No path found!")

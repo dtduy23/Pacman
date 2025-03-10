@@ -31,9 +31,12 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 
 # Weight
-STRAIGHT = 2
-TURN = 5
-BACK = 10
+STRAIGHT = 1
+TURN = 3
+BACK = 6
+
+# Game index
+HAUNTED_POINT_INDEX = 10
 
 # Map direction
 MAP_DIR = str(Path(__file__).parent.parent / "map" / "map.txt")
