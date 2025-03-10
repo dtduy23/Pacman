@@ -12,8 +12,9 @@ def UCS_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
-    # Reset the haunted status counter
-    graph.moves_since_haunted = 0
+    # Reset the haunted status counter - using a copy to avoid affecting other algorithms
+    original_haunted_points = set(graph.haunted_points)
+    moves_since_haunted = 0
     
     frontier = []
     for direction in DIRECTIONS:
@@ -22,11 +23,17 @@ def UCS_ghost(graph, start_pos, target_pos):
     visited = set()
     cost_so_far = {(start_pos, direction): 0 for direction in DIRECTIONS}  # Track minimum costs
     
+    # Dictionary to track haunted steps for each path
+    haunted_steps = {(start_pos, direction): 0 for direction in DIRECTIONS}
+    
     while frontier:
         total_cost, current_pos, prev_direction, path = heapq.heappop(frontier)
         
         if current_pos == target_pos:
-            return path, total_cost
+            # Recalculate the cost using the same function as BFS/DFS
+            # to ensure consistency between algorithms
+            final_cost = calculate_path_cost(path, original_haunted_points)
+            return path, final_cost
             
         state = (current_pos, prev_direction)
         if state in visited:
@@ -34,10 +41,25 @@ def UCS_ghost(graph, start_pos, target_pos):
             
         visited.add(state)
         
-        # Update haunted status when visiting a position
-        graph.update_haunted_status(current_pos)
+        # Update haunted status for THIS path
+        current_haunted_steps = haunted_steps[state]
+        if current_pos in original_haunted_points:
+            current_haunted_steps = 0  # Reset counter when on haunted point
         
-        neighbors = graph.get_neighbors_with_weights((current_pos, prev_direction))
+        # Get neighbors with calculated weights
+        neighbors = {}
+        raw_neighbors = graph.graph.get((current_pos, prev_direction), {})
+        
+        for next_pos, base_weight in raw_neighbors.items():
+            # Apply haunted rule if applicable
+            if current_haunted_steps < HAUNTED_POINT_INDEX:
+                # In haunted mode, all movements cost STRAIGHT
+                weight = STRAIGHT
+            else:
+                # Normal mode - use original weight
+                weight = base_weight
+                
+            neighbors[next_pos] = weight
         
         for next_pos, weight in neighbors.items():
             # Calculate new direction
@@ -51,6 +73,10 @@ def UCS_ghost(graph, start_pos, target_pos):
             if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
                 cost_so_far[next_state] = new_cost
                 new_path = path + [next_pos]
+                
+                # Update haunted steps for next state
+                haunted_steps[next_state] = current_haunted_steps + 1
+                
                 heapq.heappush(frontier, (new_cost, next_pos, next_direction, new_path))
     
     return None, None
@@ -254,7 +280,6 @@ def A_star_ghost(graph, start_pos, target_pos):
         the list of positions from ghost to player
         the total cost of the path
     """
-    # Sử dụng cách tiếp cận giống UCS
     # Reset the haunted status counter
     graph.moves_since_haunted = 0
     
