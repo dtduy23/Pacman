@@ -11,21 +11,25 @@ def test_algorithm(name, algorithm, graph, start_pos, target_pos):
     """Test pathfinding algorithm and display results"""
     print(f"Testing {name}...")
     start_time = time.time()
-    path, cost = algorithm(graph, start_pos, target_pos)
+    
+    # Updated to handle the third return value (next position)
+    path, cost, next_pos = algorithm(graph, start_pos, target_pos)
     execution_time = time.time() - start_time
     
     if path:
         # Convert path to set of positions
         path_list = list(path)
         print(f"  Result: {len(path)} steps, total cost: {cost}")
-        print(f"  Unique positions visited: {len(path_list)}")
+        print(f"  Next position: {next_pos}")
+        print(f"  Unique positions visited: {len(set(path_list))}")
+        print(f"  Execution time: {execution_time:.6f} seconds")
     else:
         print("  No path found")
-        path_list = list()
+        path_list = []
     
-    return path, cost, path_list
+    return path, cost, path_list, next_pos
 
-def visualize_path_on_map(game_map, path, ghost_pos, player_pos):
+def visualize_path_on_map(game_map, path, ghost_pos, player_pos, next_pos=None):
     """
     Visualize path on the map with colors
     """
@@ -51,6 +55,9 @@ def visualize_path_on_map(game_map, path, ghost_pos, player_pos):
             # Player position
             elif pos == player_pos:
                 line += Back.GREEN + 'P' + Style.RESET_ALL
+            # Next position
+            elif pos == next_pos:
+                line += Back.YELLOW + 'N' + Style.RESET_ALL
             # Path positions
             elif pos in path_set:
                 line += Back.BLUE + cell + Style.RESET_ALL
@@ -69,6 +76,7 @@ def visualize_path_on_map(game_map, path, ghost_pos, player_pos):
     print("\nLegend:")
     print(Back.RED + 'G' + Style.RESET_ALL + " - Ghost")
     print(Back.GREEN + 'P' + Style.RESET_ALL + " - Player")
+    print(Back.YELLOW + 'N' + Style.RESET_ALL + " - Next Position")
     print(Back.BLUE + '.' + Style.RESET_ALL + " - Path")
     print(Back.MAGENTA + '.' + Style.RESET_ALL + " - Haunted Point")
     print(Back.WHITE + Fore.BLACK + '#' + Style.RESET_ALL + " - Wall")
@@ -105,9 +113,9 @@ if __name__ == "__main__":
     ]
     
     # In kết quả dưới dạng bảng đơn giản
-    print("\n" + "-" * 70)
-    print(f"{'Algorithm':<8} {'Steps':<8} {'Total Cost':<12} {'Unique Positions'}")
-    print("-" * 70)
+    print("\n" + "-" * 90)
+    print(f"{'Algorithm':<8} {'Steps':<8} {'Total Cost':<12} {'Next Position':<15} {'Unique Positions'}")
+    print("-" * 90)
     
     for name, algo in algorithms:
         # Reset graph state cho fair comparison
@@ -116,15 +124,16 @@ if __name__ == "__main__":
         if hasattr(graph, 'haunted_points'):
             graph.haunted_points = set(test_map.haunted_points)
             
-        path, cost, path_list = test_algorithm(name, algo, graph, ghost_pos, player_pos)
+        path, cost, path_list, next_pos = test_algorithm(name, algo, graph, ghost_pos, player_pos)
         
-        # Hiển thị kết quả trong bảng
-        print(f"{name:<8} {len(path) if path else 'N/A':<8} {cost if cost else 'N/A':<12} {path_list}")
+        # Hiển thị kết quả trong bảng - chuyển next_pos thành chuỗi để tránh lỗi định dạng
+        next_pos_str = str(next_pos) if next_pos else 'N/A'
+        print(f"{name:<8} {len(path) if path else 'N/A':<8} {cost if cost else 'N/A':<12} {next_pos_str:<15} {len(set(path_list)) if path_list else 0}")
         
         # Visualize path on map with colors
         if path:
-            visualize_path_on_map(test_map, path, ghost_pos, player_pos)
+            visualize_path_on_map(test_map, path, ghost_pos, player_pos, next_pos)
             choice = input(f"\nPress Enter to continue to the next algorithm...")
     
-    print("-" * 70)
+    print("-" * 90)
     print("Test complete!")

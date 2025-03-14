@@ -5,6 +5,7 @@ from collections import defaultdict
 MapGraph class for creating a weighted graph from the game map
 """
 
+
 class MapGraph:
     def __init__(self, game_map):
         self.map = game_map
@@ -132,6 +133,103 @@ class MapGraph:
             # Increment the move counter if not at a haunted point
             self.moves_since_haunted += 1
 
+    def _determine_movement_type(self, current_direction, new_direction):
+        """Determine if moving from current to new direction is straight, turn, or back"""
+        if current_direction == new_direction:
+            return STRAIGHT_MOVEMENT
+        
+        # Calculate if directions are opposite (back movement)
+        dx1, dy1 = current_direction
+        dx2, dy2 = new_direction
+        
+        if (dx1, dy1) == (-dx2, -dy2):
+            return BACK_MOVEMENT
+        
+        # Otherwise, it's a turn
+        return TURN_MOVEMENT
+    
+    def add_temporary_obstacle(self, pos):
+        """Add a temporary obstacle at the specified position"""
+        if not hasattr(self, 'temporary_obstacles'):
+            self.temporary_obstacles = set()
+        
+        self.temporary_obstacles.add(pos)
+        
+        # Update the graph to reflect the obstacle
+        x, y = pos
+        
+        # Remove edges to/from this position
+        for direction in DIRECTIONS:
+            dx, dy = direction
+            neighbor_pos = (x + dx, y + dy)
+            
+            # Remove edge from neighbor to pos
+            if neighbor_pos in self.graph:
+                for neighbor_dir in DIRECTIONS:
+                    neighbor_state = (neighbor_pos, neighbor_dir)
+                    if neighbor_state in self.graph and pos in self.graph[neighbor_state]:
+                        del self.graph[neighbor_state][pos]
+            
+            # Remove edge from pos to neighbor
+            pos_state = (pos, direction)
+            if pos_state in self.graph and neighbor_pos in self.graph[pos_state]:
+                del self.graph[pos_state][neighbor_pos]
+
+    def remove_temporary_obstacle(self, pos):
+        """Remove a temporary obstacle and rebuild the graph connections"""
+        if not hasattr(self, 'temporary_obstacles') or pos not in self.temporary_obstacles:
+            return
+        
+        self.temporary_obstacles.remove(pos)
+        
+        # Rebuild connections for this position
+        x, y = pos
+        
+        # Check all four directions
+        for direction in DIRECTIONS:
+            dx, dy = direction
+            neighbor_pos = (x + dx, y + dy)
+            
+            # Skip if out of bounds
+            if not (0 <= neighbor_pos[0] < self.map.width and 0 <= neighbor_pos[1] < self.map.height):
+                continue
+            
+            # Skip if it's a wall
+            if self.map.layout[neighbor_pos[1]][neighbor_pos[0]] == '#':
+                continue
+            
+            # Skip if it's still a temporary obstacle
+            if hasattr(self, 'temporary_obstacles') and neighbor_pos in self.temporary_obstacles:
+                continue
+                
+            # Determine the cost based on the turn type
+            # Straight, Turn, Back based on current direction
+            for pos_dir in DIRECTIONS:
+                pos_state = (pos, pos_dir)
+                
+                # Determine if it's a straight, turn, or back movement
+                movement_type = self._determine_movement_type(pos_dir, (dx, dy))
+                if movement_type == STRAIGHT_MOVEMENT:
+                    cost = STRAIGHT
+                elif movement_type == TURN_MOVEMENT:
+                    cost = TURN
+                else:  # BACK_MOVEMENT
+                    cost = BACK
+                    
+                # Add the edge to the graph
+                if pos_state not in self.graph:
+                    self.graph[pos_state] = {}
+                self.graph[pos_state][neighbor_pos] = cost
+
+    def remove_all_temporary_obstacles(self):
+        """Remove all temporary obstacles and rebuild the graph connections"""
+        if not hasattr(self, 'temporary_obstacles'):
+            return
+            
+        obstacles = list(self.temporary_obstacles)  # Make a copy to avoid modification during iteration
+        for pos in obstacles:
+            self.remove_temporary_obstacle(pos)
+    
 from specification import *
 from game_map import Map
 from map_implement import MapGraph

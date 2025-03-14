@@ -11,6 +11,7 @@ def UCS_ghost(graph, start_pos, target_pos):
     Returns:
         the list of positions from ghost to player
         the total cost of the path
+        the next position for the ghost to move to (first step)
     """
     # Reset the haunted status counter - using a copy to avoid affecting other algorithms
     original_haunted_points = set(graph.haunted_points)
@@ -33,7 +34,10 @@ def UCS_ghost(graph, start_pos, target_pos):
             # Recalculate the cost using the same function as BFS/DFS
             # to ensure consistency between algorithms
             final_cost = calculate_path_cost(path, original_haunted_points)
-            return path, final_cost
+            
+            # Return the next position if path has more than one position
+            next_pos = path[1] if len(path) > 1 else start_pos
+            return path, final_cost, next_pos
             
         state = (current_pos, prev_direction)
         if state in visited:
@@ -79,7 +83,7 @@ def UCS_ghost(graph, start_pos, target_pos):
                 
                 heapq.heappush(frontier, (new_cost, next_pos, next_direction, new_path))
     
-    return None, None
+    return None, None, None
 
 
 def BFS_ghost(graph, start_pos, target_pos):
@@ -92,6 +96,7 @@ def BFS_ghost(graph, start_pos, target_pos):
     Returns:
         the list of positions from ghost to player
         the total cost of the path
+        the next position for the ghost to move to (first step)
     """
     # Pure BFS implementation without considering weights during search
     queue = []
@@ -109,7 +114,10 @@ def BFS_ghost(graph, start_pos, target_pos):
         if current_pos == target_pos:
             # Calculate cost after finding the path
             total_cost = calculate_path_cost(path, graph.haunted_points)
-            return path, total_cost
+            
+            # Return the next position if path has more than one position
+            next_pos = path[1] if len(path) > 1 else start_pos
+            return path, total_cost, next_pos
         
         # Create state tuple (position, direction)
         state = (current_pos, current_dir)
@@ -132,7 +140,7 @@ def BFS_ghost(graph, start_pos, target_pos):
                 new_path = path + [next_pos]
                 queue.append((next_pos, next_dir, new_path))
 
-    return None, None  # No path found
+    return None, None, None  # No path found
 
 def get_valid_neighbors(graph, pos, direction):
     """
@@ -220,6 +228,7 @@ def DFS_ghost(graph, start_pos, target_pos):
     Returns:
         the list of positions from ghost to player
         the total cost of the path
+        the next position for the ghost to move to (first step)
     """
     # Pure DFS implementation without considering weights during search
     # Reset the haunted status counter
@@ -240,7 +249,10 @@ def DFS_ghost(graph, start_pos, target_pos):
         if current_pos == target_pos:
             # Calculate cost after finding the path
             total_cost = calculate_path_cost(path, graph.haunted_points)
-            return path, total_cost
+            
+            # Return the next position if path has more than one position
+            next_pos = path[1] if len(path) > 1 else start_pos
+            return path, total_cost, next_pos
         
         # Create state tuple (position, direction)
         state = (current_pos, current_dir)
@@ -263,7 +275,7 @@ def DFS_ghost(graph, start_pos, target_pos):
                 new_path = path + [next_pos]
                 stack.append((next_pos, next_dir, new_path))
 
-    return None, None  # No path found
+    return None, None, None  # No path found
 
 def manhattan_distance(pos1, pos2):
     """Calculate Manhattan distance between two points"""
@@ -279,6 +291,7 @@ def A_star_ghost(graph, start_pos, target_pos):
     Returns:
         the list of positions from ghost to player
         the total cost of the path
+        the next position for the ghost to move to (first step)
     """
     # Reset the haunted status counter
     graph.moves_since_haunted = 0
@@ -306,13 +319,13 @@ def A_star_ghost(graph, start_pos, target_pos):
         
         # If we reached the target
         if current_pos == target_pos:
-            # Option 1: Use the g_score (computed during search)
-            # return path, g_score
-            
             # Option 2: Recalculate cost using same method as BFS/DFS
             # This ensures consistency across all algorithms
             total_cost = calculate_path_cost(path, graph.haunted_points)
-            return path, total_cost
+            
+            # Return the next position if path has more than one position
+            next_pos = path[1] if len(path) > 1 else start_pos
+            return path, total_cost, next_pos
         
         # Create a state tuple that includes position and direction
         state = (current_pos, current_direction)
@@ -367,4 +380,4 @@ def A_star_ghost(graph, start_pos, target_pos):
                 # Add to open set with updated scores
                 heapq.heappush(open_set, (new_f_score, new_g_score, next_pos, next_direction, new_path))
     
-    return None, None  # No path found
+    return None, None, None  # No path found

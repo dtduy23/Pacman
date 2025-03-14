@@ -8,10 +8,10 @@ EMPTY = ' '
 POINT = '.'
 
 # Ghost identifiers
-BLUE_GHOST = 'B'
-PINK_GHOST = 'N'
-ORANGE_GHOST = 'O'
-RED_GHOST = 'R'
+BLUE_GHOST = 'B'   # Uses BFS algorithm
+PINK_GHOST = 'N'   # Uses A* algorithm
+ORANGE_GHOST = 'O' # Uses DFS algorithm
+RED_GHOST = 'R'    # Uses UCS algorithm
 HAUNTED_POINT = 'H'
 
 # Directions
@@ -37,6 +37,19 @@ BACK = 6
 
 # Game index
 HAUNTED_POINT_INDEX = 10
+SPEED = 100
+PLAYER_MOVEMENT = 0.2# 0.4 seconds between moves
+
+# Movement types for graph weights
+STRAIGHT_MOVEMENT = 0
+TURN_MOVEMENT = 1
+BACK_MOVEMENT = 2
+
+# Định nghĩa các hằng số cho FPS
+TARGET_FPS = 300
+FRAME_TIME = 1.0 / TARGET_FPS
+GHOST_UPDATE_INTERVAL = 0.5
+BASE_GHOST_UPDATE_INTERVAL = 0.5
 
 # Map direction
 MAP_DIR = str(Path(__file__).parent.parent / "map" / "map.txt")
