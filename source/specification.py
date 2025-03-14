@@ -32,8 +32,8 @@ YELLOW = (255, 255, 0)
 
 # Weight
 STRAIGHT = 1
-TURN = 3
-BACK = 6
+TURN = 10
+BACK = 20
 
 # Game index
 HAUNTED_POINT_INDEX = 10
@@ -46,10 +46,10 @@ TURN_MOVEMENT = 1
 BACK_MOVEMENT = 2
 
 # Định nghĩa các hằng số cho FPS
-TARGET_FPS = 300
+TARGET_FPS = 300 
 FRAME_TIME = 1.0 / TARGET_FPS
 GHOST_UPDATE_INTERVAL = 0.5
-BASE_GHOST_UPDATE_INTERVAL = 0.5
+BASE_GHOST_UPDATE_INTERVAL = 0.25
 
 # Map direction
 MAP_DIR = str(Path(__file__).parent.parent / "map" / "map.txt")

@@ -51,15 +51,20 @@ class GamePlay:
                 color = Back.MAGENTA
                 
             self.ghosts[ghost_type] = {
-                'pos': pos,
-                'previous_direction': UP,  # Default direction
-                'path': None,
-                'letter': letter,
-                'color': color,
-                'algorithm': ghost_type,
-                'lock': threading.Lock(),  # Lock for thread safety
-                'last_move_time': time.time()  # Track when the ghost last moved
-            }
+            'pos': pos,
+            'previous_direction': UP,  # Default direction
+            'path': None,
+            'letter': letter,
+            'color': color,
+            'algorithm': ghost_type,
+            'lock': threading.Lock(),  # Lock for thread safety
+            'last_move_time': time.time(),  # Track when the ghost last moved
+            'has_moved': False,  # Track if ghost has moved from initial position
+            'movement_type': STRAIGHT_MOVEMENT,  # Default movement type
+            'update_interval': STRAIGHT * BASE_GHOST_UPDATE_INTERVAL,  # Initial update interval
+            'haunted_steps_remaining': 0,  # Số bước di chuyển còn lại trong trạng thái haunted
+            'is_haunted': False  # Trạng thái bị ám
+        }
 
         self.initial_ghost_positions.add(pos)    
         
@@ -142,6 +147,26 @@ class GamePlay:
         print("Controls: ↑↓←→ to move, Q to quit")
         print("=" * 40)
         
+        # Thêm thông tin về tốc độ di chuyển của ma
+        movement_names = {
+            STRAIGHT_MOVEMENT: "Đi thẳng",
+            TURN_MOVEMENT: "Rẽ",
+            BACK_MOVEMENT: "Quay lại"
+        }
+        
+        print("\nTốc độ di chuyển ma:")
+        for ghost_type, ghost in self.ghosts.items():
+            movement_type = ghost.get('movement_type', STRAIGHT_MOVEMENT)
+            update_interval = ghost.get('update_interval', STRAIGHT * BASE_GHOST_UPDATE_INTERVAL)
+            move_str = movement_names.get(movement_type, "Unknown")
+            
+            # Hiển thị thông tin về trạng thái haunted
+            haunted_status = ""
+            if ghost.get('is_haunted', False):
+                haunted_status = f" (Haunted: {ghost.get('haunted_steps_remaining', 0)} bước còn lại)"
+            
+            print(f"{ghost['color']}{ghost['letter']}{Style.RESET_ALL}: {move_str} - {update_interval:.2f}s{haunted_status}")
+        
         # Print legend
         print("\nLegend:")
         print(Back.GREEN + 'P' + Style.RESET_ALL + " - Player")
@@ -201,15 +226,30 @@ class GamePlay:
         """Thread function for independent ghost movement"""
         ghost = self.ghosts[ghost_type]
         
+        # Đảm bảo ma có các thuộc tính cần thiết
+        if 'update_interval' not in ghost:
+            ghost['update_interval'] = STRAIGHT * BASE_GHOST_UPDATE_INTERVAL
+        if 'movement_type' not in ghost:
+            ghost['movement_type'] = STRAIGHT_MOVEMENT
+        if 'previous_direction' not in ghost:
+            ghost['previous_direction'] = UP  # Hướng mặc định
+        if 'last_move_time' not in ghost:
+            ghost['last_move_time'] = time.time()
+        if 'haunted_steps_remaining' not in ghost:
+            ghost['haunted_steps_remaining'] = 0
+        if 'is_haunted' not in ghost:
+            ghost['is_haunted'] = False
+        
         while not self.game_over:
             current_time = time.time()
             
-            # Chỉ di chuyển ma khi đã đến thời gian cập nhật
-            if current_time - ghost['last_move_time'] >= GHOST_UPDATE_INTERVAL:
+            # Kiểm tra xem đã đến lúc cập nhật chưa
+            if current_time - ghost['last_move_time'] >= ghost['update_interval']:
                 # Calculate path for ghost based on current player position
                 with self.game_lock:
                     current_player_pos = self.player_pos
                     current_ghost_pos = ghost['pos']
+                    current_direction = ghost['previous_direction']
                     
                     # Get positions of all other ghosts to avoid collisions
                     other_ghost_positions = set()
@@ -302,15 +342,72 @@ class GamePlay:
                                     break
                         
                         if is_position_free:
+                            # Lưu vị trí hiện tại để sau đó xóa
+                            old_pos = ghost['pos']
+                            
                             # Calculate direction
                             dx = next_pos[0] - ghost['pos'][0]
                             dy = next_pos[1] - ghost['pos'][1]
+                            new_direction = (dx, dy)
+                            
+                            # Kiểm tra xem vị trí mới có phải là haunted point không
+                            if next_pos in self.game_map.haunted_points:
+                                ghost['is_haunted'] = True
+                                ghost['haunted_steps_remaining'] = HAUNTED_POINT_INDEX  # 10 bước
+                                # Khi bị ám, di chuyển luôn với tốc độ STRAIGHT
+                                ghost['update_interval'] = STRAIGHT * BASE_GHOST_UPDATE_INTERVAL
+                            else:
+                                # Nếu đang bị ám, giảm số bước còn lại
+                                if ghost['haunted_steps_remaining'] > 0:
+                                    ghost['haunted_steps_remaining'] -= 1
+                                    # Vẫn giữ tốc độ STRAIGHT
+                                    ghost['update_interval'] = STRAIGHT * BASE_GHOST_UPDATE_INTERVAL
+                                else:
+                                    # Nếu hết bị ám hoặc không bị ám, tính toán tốc độ dựa trên loại di chuyển
+                                    ghost['is_haunted'] = False
+                                    
+                                    # Xác định loại di chuyển (thẳng, rẽ, lùi)
+                                    if ghost['previous_direction'] == new_direction:
+                                        movement_type = STRAIGHT_MOVEMENT
+                                        ghost['update_interval'] = STRAIGHT * BASE_GHOST_UPDATE_INTERVAL
+                                    elif (ghost['previous_direction'][0] == -new_direction[0] and 
+                                          ghost['previous_direction'][1] == -new_direction[1]):
+                                        movement_type = BACK_MOVEMENT
+                                        ghost['update_interval'] = BACK * BASE_GHOST_UPDATE_INTERVAL
+                                    else:
+                                        movement_type = TURN_MOVEMENT
+                                        ghost['update_interval'] = TURN * BASE_GHOST_UPDATE_INTERVAL
+                                    
+                                    # Lưu lại loại di chuyển để hiển thị
+                                    ghost['movement_type'] = movement_type
                             
                             # Update ghost's previous direction
-                            ghost['previous_direction'] = (dx, dy)
+                            ghost['previous_direction'] = new_direction
                             
                             # Move ghost
                             ghost['pos'] = next_pos
+                            
+                            # Nếu đây là lần di chuyển đầu tiên, xóa vị trí ban đầu trên bản đồ
+                            if not ghost.get('has_moved', False):
+                                with self.game_lock:
+                                    old_x, old_y = old_pos
+                                    # Đảm bảo vị trí này không được sử dụng bởi ghost khác
+                                    is_used_by_other = False
+                                    for other_type, other_ghost in self.ghosts.items():
+                                        if other_type != ghost_type and other_ghost['pos'] == old_pos:
+                                            is_used_by_other = True
+                                            break
+                                    
+                                    # Nếu không có ghost nào khác ở vị trí cũ, xóa nó
+                                    if not is_used_by_other:
+                                        # Kiểm tra xem có phải là haunted point không
+                                        if old_pos in self.game_map.haunted_points:
+                                            self.map_display[old_y][old_x] = 'H'
+                                        else:
+                                            self.map_display[old_y][old_x] = ' '
+                                    
+                                    # Đánh dấu đã di chuyển
+                                    ghost['has_moved'] = True
                             
                             # Xóa vị trí đã di chuyển khỏi kế hoạch
                             with self.planned_positions_lock:
@@ -324,6 +421,15 @@ class GamePlay:
                 
                 # Cập nhật thời gian di chuyển cuối cùng
                 ghost['last_move_time'] = current_time
+                
+                # Hiển thị thông tin về loại di chuyển và khoảng thời gian (debug)
+                if hasattr(self, 'show_movement_debug') and self.show_movement_debug:
+                    movement_names = {
+                        STRAIGHT_MOVEMENT: "Straight",
+                        TURN_MOVEMENT: "Turn",
+                        BACK_MOVEMENT: "Back"
+                    }
+                    print(f"{ghost['letter']}: {movement_names[ghost['movement_type']]} - {ghost['update_interval']:.2f}s")
             
             # Sleep just enough to maintain frame rate without consuming too much CPU
             time.sleep(0.01)  # Giảm thời gian chờ để tăng tốc độ phản hồi
