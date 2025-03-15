@@ -9,11 +9,10 @@ from map_implement import MapGraph
 from algorithm import UCS_ghost, BFS_ghost, DFS_ghost, A_star_ghost
 import threading
 import random
+import sys
 
 # Initialize colorama
 colorama.init(autoreset=True)
-
-
 
 class GamePlay:
     def __init__(self, map_dir=MAP_DIR):
@@ -73,6 +72,7 @@ class GamePlay:
         self.win = False
         self.score = 0
         self.moves = 0
+        self.previous_map = {}
         
         # Track collected haunted points
         self.collected_haunted = set()
@@ -102,7 +102,7 @@ class GamePlay:
 
     def display_map(self):
         """Display the game map with colored entities"""
-        self.clear_screen()
+        # self.clear_screen()
         
         # Update FPS counter
         self.frame_count += 1
@@ -113,67 +113,83 @@ class GamePlay:
             self.fps_update_time = current_time
         
         # Print the colored map
-        print("\nPacman Game:")
+        sys.stdout.write(f"\033[1;1H\nPacman Game:")
         if self.show_fps:
-            print(f"FPS: {self.fps:.1f}")
-        print("=" * 40)
+           sys.stdout.write(f"\033[3;1HFPS: {self.fps:.1f}\n")
+        print("=" * 23)
         
+        current_map = {}  # Lưu trạng thái mới
+
         for y, row in enumerate(self.map_display):
-            line = ""
             for x, cell in enumerate(row):
                 pos = (x, y)
-                
-                # Player position
+
+                # Xác định ký tự hiển thị
                 if pos == self.player_pos:
-                    line += Back.GREEN + 'P' + Style.RESET_ALL
-                # Ghost positions
+                    char = Back.GREEN + 'P' + Style.RESET_ALL
                 elif any(pos == ghost['pos'] for ghost in self.ghosts.values()):
-                    ghost_info = next((g for g in self.ghosts.values() if g['pos'] == pos), None)
-                    line += ghost_info['color'] + ghost_info['letter'] + Style.RESET_ALL
-                # Haunted points
+                    ghost_info = next(g for g in self.ghosts.values() if g['pos'] == pos)
+                    char = ghost_info['color'] + ghost_info['letter'] + Style.RESET_ALL
                 elif pos in self.game_map.haunted_points:
-                    line += Back.MAGENTA + 'H' + Style.RESET_ALL
-                # Walls
+                    char = Back.MAGENTA + 'H' + Style.RESET_ALL
                 elif cell == '#':
-                    line += Back.WHITE + Fore.BLACK + '#' + Style.RESET_ALL
-                # Regular cells
+                    char = Back.WHITE + Fore.BLACK + '#' + Style.RESET_ALL
                 else:
-                    line += cell
-            print(line)
-        
-        # Print game info
-        print("=" * 40)
-        print(f"Moves: {self.moves} | Score: {self.score}")
-        print("Controls: ↑↓←→ to move, Q to quit")
-        print("=" * 40)
-        
-        # Thêm thông tin về tốc độ di chuyển của ma
+                    char = cell  # Giữ nguyên ô không thay đổi
+
+                current_map[pos] = char  # Lưu ký tự hiện tại vào bản đồ mới
+
+                # Chỉ in khi có thay đổi
+                if self.previous_map.get(pos) != char:
+                    sys.stdout.write(f"\033[{y+5};{x+1}H{char}")  # Di chuyển con trỏ & in ký tự
+                    sys.stdout.flush()
+
+        # Cập nhật trạng thái bản đồ trước đó
+        self.previous_map = current_map
+
+        # Hiển thị thông tin game
+        right_x = 40;
+        sys.stdout.write(f"\033[2;{right_x}H" + "=" * 23)  
+        sys.stdout.write(f"\033[3;{right_x}HMoves: {self.moves} | Score: {self.score}")
+        sys.stdout.write(f"\033[4;{right_x}HControls: ↑↓←→ to move, Q to quit")
+        sys.stdout.write(f"\033[5;{right_x}H" + "=" * 23)
+        sys.stdout.flush()
+
+        # Hiển thị tốc độ di chuyển của ma
         movement_names = {
             STRAIGHT_MOVEMENT: "Đi thẳng",
             TURN_MOVEMENT: "Rẽ",
             BACK_MOVEMENT: "Quay lại"
         }
-        
-        print("\nTốc độ di chuyển ma:")
+        line = 8  # Dòng bắt đầu in thông tin ma
+        # Hiển thị legend (chú thích ký hiệu)
+        sys.stdout.write(f"\033[{line+1};{right_x}HLegend:")
+        sys.stdout.write(f"\033[{line+2};{right_x}H" + Back.GREEN + 'P' + Style.RESET_ALL + " - Player")
+
+        for ghost_type, ghost in self.ghosts.items():
+            sys.stdout.write(f"\033[{line+3};{right_x}H{ghost['color']}{ghost['letter']}{Style.RESET_ALL} - {ghost['algorithm']} Ghost")
+            line += 1
+
+        sys.stdout.write(f"\033[{line+3};{right_x}H" + Back.MAGENTA + 'H' + Style.RESET_ALL + " - Haunted Point")
+        sys.stdout.write(f"\033[{line+4};{right_x}H" + Back.WHITE + Fore.BLACK + '#' + Style.RESET_ALL + " - Wall")
+
+        line += 7
+
+        sys.stdout.write(f"\033[{line};{right_x}HTốc độ di chuyển ma:")
+        line += 1
         for ghost_type, ghost in self.ghosts.items():
             movement_type = ghost.get('movement_type', STRAIGHT_MOVEMENT)
             update_interval = ghost.get('update_interval', STRAIGHT * BASE_GHOST_UPDATE_INTERVAL)
             move_str = movement_names.get(movement_type, "Unknown")
-            
-            # Hiển thị thông tin về trạng thái haunted
+
             haunted_status = ""
             if ghost.get('is_haunted', False):
                 haunted_status = f" (Haunted: {ghost.get('haunted_steps_remaining', 0)} bước còn lại)"
-            
-            print(f"{ghost['color']}{ghost['letter']}{Style.RESET_ALL}: {move_str} - {update_interval:.2f}s{haunted_status}")
-        
-        # Print legend
-        print("\nLegend:")
-        print(Back.GREEN + 'P' + Style.RESET_ALL + " - Player")
-        for ghost_type, ghost in self.ghosts.items():
-            print(ghost['color'] + ghost['letter'] + Style.RESET_ALL + f" - {ghost['algorithm']} Ghost")
-        print(Back.MAGENTA + 'H' + Style.RESET_ALL + " - Haunted Point")
-        print(Back.WHITE + Fore.BLACK + '#' + Style.RESET_ALL + " - Wall")
+
+                sys.stdout.write(f"\033[{line};{right_x}H{ghost['color']}{ghost['letter']}{Style.RESET_ALL}: {move_str} - {update_interval:.2f}s{haunted_status}")
+            line += 1
+
+        # sys.stdout.flush()  # Cập nhật màn hình ngay
 
     def is_valid_move(self, pos):
         """Check if a position is a valid move (not a wall and within bounds)"""
@@ -495,12 +511,13 @@ class GamePlay:
             # Check if game is over
             if self.game_over:
                 if self.win:
-                    print("\nYou Win! 🎮")
+                    sys.stdout.write(f"\033[7;{40}HYou Win! 🎮")
                 else:
-                    print("\nGame Over! Ghost got you! 👻")
+                    sys.stdout.write(f"\033[7;{40}HGame Over! Ghost got you! 👻")
                 
-                print(f"Final Score: {self.score}")
-                print(f"Moves Made: {self.moves}")
+                sys.stdout.write(f"\033[8;{40}HFinal Score: {self.score}")
+                sys.stdout.write(f"\033[9;{40}HMoves Made: {self.moves}")
+                input()
                 break
             
             # Tính toán thời gian đã trôi qua trong frame này
@@ -513,6 +530,7 @@ class GamePlay:
 
 # Run the game if this file is executed directly
 if __name__ == "__main__":
+    os.system('cls' if os.name == 'nt' else 'clear')
     # Try to install keyboard if not available
     try:
         import keyboard
