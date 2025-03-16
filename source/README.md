@@ -38,8 +38,10 @@ project1/
 
 ## Requirements
 
-- Python 3.x
-- Pygame 2.6.1+ (for 2D version)
+- python 3.x
+- pygame 2.6.1+ (for 2D version)
+- colorama 0.4.4+
+- keyboard 0.13.5+
 
 ## Installation
 
@@ -53,7 +55,12 @@ cd project1
 ```bash
 pip install pygame
 ```
-
+```bash
+pip install colorama
+```
+```bash
+pip install keyboard
+```
 ## Usage
 
 The game offers multiple ways to run it through command-line arguments:
