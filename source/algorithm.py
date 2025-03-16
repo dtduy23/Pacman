@@ -2,134 +2,105 @@ from specification import *
 import heapq
 
 def UCS_ghost(graph, start_pos, target_pos):
-    """
-    Uniform Cost Search algorithm for orange ghost to find path to player
-    Args:
-        graph: MapGraph object containing the game map
-        start_pos: Starting position of orange ghost (x,y)
-        target_pos: Target position (Pacman's position)
-    Returns:
-        the list of positions from ghost to player
-        the total cost of the path
-        the next position for the ghost to move to (first step)
-    """
-    # Reset the haunted status counter - using a copy to avoid affecting other algorithms
-    original_haunted_points = set(graph.haunted_points)
-    moves_since_haunted = 0
+    """UCS algorithm for finding optimal path from ghost to player
     
+    Uses priority queue to explore nodes in order of increasing cost.
+    Considers haunted points effect on movement costs.
+    """
+    # Make a copy of haunted points to prevent affecting other algorithms
+    original_haunted_points = set(graph.haunted_points)
+    
+    # Initialize priority queue with all possible starting directions
     frontier = []
     for direction in DIRECTIONS:
         heapq.heappush(frontier, (0, start_pos, direction, [start_pos]))
     
+    # Keep track of visited states and costs
     visited = set()
-    cost_so_far = {(start_pos, direction): 0 for direction in DIRECTIONS}  # Track minimum costs
-    
-    # Dictionary to track haunted steps for each path
+    cost_so_far = {(start_pos, direction): 0 for direction in DIRECTIONS}
     haunted_steps = {(start_pos, direction): 0 for direction in DIRECTIONS}
     
     while frontier:
+        # Get state with lowest cost from priority queue
         total_cost, current_pos, prev_direction, path = heapq.heappop(frontier)
         
+        # Goal test - return path, cost, and next step
         if current_pos == target_pos:
-            # Recalculate the cost using the same function as BFS/DFS
-            # to ensure consistency between algorithms
             final_cost = calculate_path_cost(path, original_haunted_points)
-            
-            # Return the next position if path has more than one position
             next_pos = path[1] if len(path) > 1 else start_pos
             return path, final_cost, next_pos
             
+        # Skip if already visited
         state = (current_pos, prev_direction)
         if state in visited:
             continue
             
         visited.add(state)
         
-        # Update haunted status for THIS path
+        # Check if current position is a haunted point
         current_haunted_steps = haunted_steps[state]
         if current_pos in original_haunted_points:
-            current_haunted_steps = 0  # Reset counter when on haunted point
+            # Reset counter when on a haunted point
+            current_haunted_steps = 0
         
-        # Get neighbors with calculated weights
+        # Apply haunted point effect to movement costs
         neighbors = {}
         raw_neighbors = graph.graph.get((current_pos, prev_direction), {})
         
         for next_pos, base_weight in raw_neighbors.items():
-            # Apply haunted rule if applicable
-            if current_haunted_steps < HAUNTED_POINT_INDEX:
-                # In haunted mode, all movements cost STRAIGHT
-                weight = STRAIGHT
-            else:
-                # Normal mode - use original weight
-                weight = base_weight
-                
+            # If within haunted effect, all movements cost STRAIGHT
+            weight = STRAIGHT if current_haunted_steps < HAUNTED_POINT_INDEX else base_weight
             neighbors[next_pos] = weight
         
+        # Explore neighbors
         for next_pos, weight in neighbors.items():
-            # Calculate new direction
-            next_direction = (
-                next_pos[0] - current_pos[0],
-                next_pos[1] - current_pos[1]
-            )
+            # Calculate direction to next position
+            next_direction = (next_pos[0] - current_pos[0], next_pos[1] - current_pos[1])
             next_state = (next_pos, next_direction)
             new_cost = total_cost + weight
             
+            # Update if found better path
             if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
                 cost_so_far[next_state] = new_cost
                 new_path = path + [next_pos]
-                
-                # Update haunted steps for next state
                 haunted_steps[next_state] = current_haunted_steps + 1
-                
                 heapq.heappush(frontier, (new_cost, next_pos, next_direction, new_path))
     
+    # No path found
     return None, None, None
 
 
 def BFS_ghost(graph, start_pos, target_pos):
+    """BFS algorithm for finding shortest path from ghost to player
+    
+    Explores all nodes at present depth before moving to next depth.
+    Guarantees shortest path in terms of number of steps.
     """
-    Breadth First Search algorithm for orange ghost to find path to player
-    Args:
-        graph: MapGraph object containing the game map
-        start_pos: Starting position of orange ghost (x,y)
-        target_pos: Target position (Pacman's position)
-    Returns:
-        the list of positions from ghost to player
-        the total cost of the path
-        the next position for the ghost to move to (first step)
-    """
-    # Pure BFS implementation without considering weights during search
+    # Initialize queue with all possible starting directions
     queue = []
-    # Start with all possible directions
     for direction in DIRECTIONS:
         queue.append((start_pos, direction, [start_pos]))
     
-    # Track visited states (position, direction)
     visited = set()
 
     while queue:
+        # Get first state from queue (FIFO)
         current_pos, current_dir, path = queue.pop(0)
         
-        # Check if we reached the target
+        # Goal test
         if current_pos == target_pos:
-            # Calculate cost after finding the path
             total_cost = calculate_path_cost(path, graph.haunted_points)
-            
-            # Return the next position if path has more than one position
             next_pos = path[1] if len(path) > 1 else start_pos
             return path, total_cost, next_pos
         
-        # Create state tuple (position, direction)
+        # Skip if already visited
         state = (current_pos, current_dir)
-        
-        # Skip if we've already visited this state
         if state in visited:
             continue
             
-        # Mark state as visited
         visited.add(state)
         
-        # Get all valid neighbors (ignoring weights for BFS)
+        # Get all valid neighbors
         neighbors = get_valid_neighbors(graph, current_pos, current_dir)
         
         # Add unvisited neighbors to queue
@@ -140,134 +111,117 @@ def BFS_ghost(graph, start_pos, target_pos):
                 new_path = path + [next_pos]
                 queue.append((next_pos, next_dir, new_path))
 
-    return None, None, None  # No path found
+    # No path found
+    return None, None, None
+
 
 def get_valid_neighbors(graph, pos, direction):
-    """
-    Get valid neighbors without considering weights
-    Returns list of (next_position, next_direction) pairs
+    """Get valid neighbor positions and their directions
+    
+    Returns list of (position, direction) tuples that can be reached from current state.
     """
     neighbors = []
-    
-    # Get valid neighbors from graph
+    # Get all neighbors from graph
     neighbor_dict = graph.get_neighbors_with_weights((pos, direction))
     
+    # Calculate direction for each neighbor
     for next_pos in neighbor_dict:
-        # Calculate direction from current to next position
-        next_dir = (
-            next_pos[0] - pos[0],
-            next_pos[1] - pos[1]
-        )
+        next_dir = (next_pos[0] - pos[0], next_pos[1] - pos[1])
         neighbors.append((next_pos, next_dir))
     
     return neighbors
 
+
 def calculate_path_cost(path, haunted_points):
-    """
-    Calculate the cost of a path after BFS has found it
-    Applies rules:
-    - STRAIGHT (2) for going straight
-    - TURN (5) for 90 degree turns
-    - BACK (10) for 180 degree turns
-    - After haunted point, all movements cost STRAIGHT (2) for the next 20 steps
+    """Calculate the total cost of a path, considering turns and haunted points
+    
+    Movement costs:
+    - Straight movement: STRAIGHT (1 unit)
+    - 90° turn: TURN (7 units)
+    - 180° turn: BACK (14 units)
+    - After haunted point: All movements cost STRAIGHT for 10 steps
     """
     if len(path) <= 1:
         return 0
     
     total_cost = 0
     remaining_haunted_steps = 0
-    
-    # Track the previous direction - undefined for first step
     prev_dir = None
     
     for i in range(1, len(path)):
-        # Get current and previous positions
         prev_pos = path[i-1]
         curr_pos = path[i]
-        
-        # Calculate current direction
+        # Calculate direction of current step
         curr_dir = (curr_pos[0] - prev_pos[0], curr_pos[1] - prev_pos[1])
         
-        # Check if at a haunted point
+        # Check if previous position was a haunted point
         if prev_pos in haunted_points:
-            remaining_haunted_steps = HAUNTED_POINT_INDEX # Reset counter
+            remaining_haunted_steps = HAUNTED_POINT_INDEX  # Reset to 10 steps
         
-        # Determine cost based on turn type and haunted status
+        # Determine movement cost
         if remaining_haunted_steps > 0:
-            # In haunted mode, all movements cost STRAIGHT
+            # Under haunted effect - all movements cost STRAIGHT
             cost = STRAIGHT
             remaining_haunted_steps -= 1
         else:
-            # Normal mode - determine turn type based on previous direction
+            # Normal movement costs based on direction change
             if prev_dir is None:
-                # First step has no turn
+                # First movement
                 cost = STRAIGHT
             else:
-                # Determine turn type by comparing previous and current directions
                 if prev_dir == curr_dir:
-                    cost = STRAIGHT  # Going straight
+                    # Continuing in same direction
+                    cost = STRAIGHT
                 elif (prev_dir[0] == -curr_dir[0] and prev_dir[1] == -curr_dir[1]):
-                    cost = BACK      # 180 degree turn
+                    # 180° turn (opposite direction)
+                    cost = BACK
                 else:
-                    cost = TURN      # 90 degree turn
+                    # 90° turn
+                    cost = TURN
         
-        # Store current direction for next iteration
         prev_dir = curr_dir
-        
         total_cost += cost
     
     return total_cost
 
+
 def DFS_ghost(graph, start_pos, target_pos):
+    """DFS algorithm for finding path from ghost to player
+    
+    Explores as far as possible along each branch before backtracking.
+    Creates more unpredictable paths, not guaranteed to be optimal.
     """
-    Depth First Search algorithm for orange ghost to find path to player
-    Args:
-        graph: MapGraph object containing the game map
-        start_pos: Starting position of orange ghost (x,y)
-        target_pos: Target position (Pacman's position)
-    Returns:
-        the list of positions from ghost to player
-        the total cost of the path
-        the next position for the ghost to move to (first step)
-    """
-    # Pure DFS implementation without considering weights during search
-    # Reset the haunted status counter
+    # Reset haunted steps counter
     graph.moves_since_haunted = 0
     
-    # Stack for DFS, storing (position, direction, path)
+    # Initialize stack with all possible starting directions
     stack = []
     for direction in DIRECTIONS:
         stack.append((start_pos, direction, [start_pos]))
     
-    # Track visited states (position, direction)
     visited = set()
 
     while stack:
+        # Get last state from stack (LIFO)
         current_pos, current_dir, path = stack.pop()
         
-        # Check if we reached the target
+        # Goal test
         if current_pos == target_pos:
-            # Calculate cost after finding the path
             total_cost = calculate_path_cost(path, graph.haunted_points)
-            
-            # Return the next position if path has more than one position
             next_pos = path[1] if len(path) > 1 else start_pos
             return path, total_cost, next_pos
         
-        # Create state tuple (position, direction)
+        # Skip if already visited
         state = (current_pos, current_dir)
-        
-        # Skip if we've already visited this state
         if state in visited:
             continue
             
-        # Mark state as visited
         visited.add(state)
         
-        # Get all valid neighbors (ignoring weights for DFS path finding)
+        # Get all valid neighbors
         neighbors = get_valid_neighbors(graph, current_pos, current_dir)
         
-        # Add unvisited neighbors to stack
+        # Add unvisited neighbors to stack (will be explored in reverse order)
         for next_pos, next_dir in neighbors:
             next_state = (next_pos, next_dir)
             
@@ -275,157 +229,141 @@ def DFS_ghost(graph, start_pos, target_pos):
                 new_path = path + [next_pos]
                 stack.append((next_pos, next_dir, new_path))
 
-    return None, None, None  # No path found
+    # No path found
+    return None, None, None
+
 
 def manhattan_distance(pos1, pos2):
-    """Calculate Manhattan distance between two points"""
+    """Calculate Manhattan distance between two points
+    
+    Used as heuristic in A* algorithm.
+    """
     return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
+
 def A_star_ghost(graph, start_pos, target_pos):
+    """A* algorithm for finding optimal path from ghost to player
+    
+    Combines UCS with heuristic to guide search towards target.
+    Uses f(n) = g(n) + h(n) where:
+    - g(n) is cost from start to current node
+    - h(n) is estimated cost from current node to goal
     """
-    Optimized A* Search algorithm for ghost pathfinding
-    Args:
-        graph: MapGraph object containing the game map
-        start_pos: Starting position of ghost (x,y)
-        target_pos: Target position (Pacman's position)
-    Returns:
-        the list of positions from ghost to player
-        the total cost of the path
-        the next position for the ghost to move to (first step)
-    """
-    # Create a local copy of haunted points to avoid affecting other algorithms
+    # Make a copy of haunted points to prevent affecting other algorithms
     original_haunted_points = set(graph.haunted_points)
+    heuristic_cache = {}  # Cache for faster heuristic calculations
+    haunted_steps = {}    # Track haunted effect for each state independently
     
-    # Cache for heuristic calculations to avoid redundant calculations
-    heuristic_cache = {}
+    # Initialize data structures
+    open_set = []   # Priority queue of states to explore
+    g_scores = {}   # Actual cost from start to each state
+    f_scores = {}   # Total estimated cost (g + h) for each state
     
-    # Dictionary to track haunted state for each path independently
-    haunted_steps = {}
-    
-    # More efficient priority queue initialization
-    open_set = []
-    g_scores = {}
-    f_scores = {}
-    came_from = {}  # For efficient path reconstruction
-    
-    # Initialize starting nodes for all possible directions
+    # Initialize with all possible starting directions
     for direction in DIRECTIONS:
         state = (start_pos, direction)
         g_scores[state] = 0
         f_scores[state] = get_heuristic(start_pos, target_pos, heuristic_cache)
         haunted_steps[state] = 0
-        heapq.heappush(open_set, (f_scores[state], 0, id(state), state, [start_pos]))  # Using id() to break ties
+        # Add to open set: (f_score, g_score, unique_id, state, path)
+        heapq.heappush(open_set, (f_scores[state], 0, id(state), state, [start_pos]))
     
-    # Set to track closed states
-    closed_set = set()
-    
-    # Counter for tie-breaking when f_scores are equal
-    counter = 0
+    closed_set = set()  # States already evaluated
+    counter = 0         # For tie-breaking when f_scores are equal
     
     while open_set:
-        # Extract state with lowest f_score
+        # Get state with lowest f_score
         _, _, _, current_state, path = heapq.heappop(open_set)
         current_pos, current_direction = current_state
         
         # Goal test
         if current_pos == target_pos:
-            # Calculate final cost using consistent method
             total_cost = calculate_path_cost(path, original_haunted_points)
-            
-            # Get next position for ghost movement
             next_pos = path[1] if len(path) > 1 else current_pos
             return path, total_cost, next_pos
         
-        # Skip if already processed
+        # Skip if already evaluated
         if current_state in closed_set:
             continue
         
-        # Add to closed set
+        # Mark as evaluated
         closed_set.add(current_state)
         
-        # Get current haunted state for this path
+        # Check for haunted point effect
         current_haunted_steps = haunted_steps[current_state]
-        
-        # Check if position is a haunted point
         if current_pos in original_haunted_points:
-            current_haunted_steps = 0  # Reset counter
+            # Reset counter when on a haunted point
+            current_haunted_steps = 0
         
-        # Get neighbors with weights
+        # Apply haunted point effect to movement costs
         neighbors = {}
         raw_neighbors = graph.graph.get(current_state, {})
         
-        # Apply haunted effect to movement costs if applicable
         for next_pos, base_weight in raw_neighbors.items():
-            # Apply haunted rule if applicable
+            # If within haunted effect, all movements cost STRAIGHT
             weight = STRAIGHT if current_haunted_steps < HAUNTED_POINT_INDEX else base_weight
             neighbors[next_pos] = weight
         
-        # Process neighbors
+        # Explore neighbors
         for next_pos, weight in neighbors.items():
             # Calculate direction to next position
             next_direction = (next_pos[0] - current_pos[0], next_pos[1] - current_pos[1])
             next_state = (next_pos, next_direction)
             
-            # Skip if already processed
+            # Skip if already evaluated
             if next_state in closed_set:
                 continue
             
             # Calculate tentative g_score
             tentative_g_score = g_scores[current_state] + weight
             
-            # Check if new path is better
+            # Update if found better path
             if next_state not in g_scores or tentative_g_score < g_scores[next_state]:
                 # Update path information
                 g_scores[next_state] = tentative_g_score
                 
-                # Compute heuristic (cached)
+                # Calculate heuristic (from cache if available)
                 h_score = get_heuristic(next_pos, target_pos, heuristic_cache)
                 
-                # Update f_score
+                # Calculate f_score = g_score + h_score
                 f_score = tentative_g_score + h_score
                 f_scores[next_state] = f_score
                 
-                # Update haunted steps for this path
+                # Update haunted steps counter
                 haunted_steps[next_state] = current_haunted_steps + 1
                 
-                # Construct new path
+                # Create new path
                 new_path = path + [next_pos]
                 
-                # Increase counter for tie-breaking
+                # Increment counter for tie-breaking
                 counter += 1
                 
-                # Add to open set
+                # Add to open set with updated values
                 heapq.heappush(open_set, (f_score, tentative_g_score, counter, next_state, new_path))
     
     # No path found
     return None, None, None
 
+
 def get_heuristic(pos, target, cache=None):
-    """
-    Optimized and more informative heuristic function.
-    Uses caching to avoid redundant calculations.
+    """Calculate heuristic with caching for better performance
     
-    Args:
-        pos: Current position
-        target: Target position
-        cache: Optional dictionary for caching results
-    
-    Returns:
-        Heuristic value (estimated cost to target)
+    Uses Manhattan distance scaled by STRAIGHT cost for admissibility.
+    Caching improves performance by avoiding redundant calculations.
     """
-    # Use cache if provided
+    # Check cache first
     if cache is not None:
         key = (pos, target)
         if key in cache:
             return cache[key]
     
-    # Base Manhattan distance
+    # Calculate Manhattan distance
     distance = abs(pos[0] - target[0]) + abs(pos[1] - target[1])
     
-    # Scale by minimum movement cost for admissibility
+    # Scale by minimum movement cost to ensure admissibility
     h_value = distance * STRAIGHT
     
-    # Store in cache if provided
+    # Store in cache
     if cache is not None:
         cache[(pos, target)] = h_value
     
