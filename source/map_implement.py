@@ -347,9 +347,9 @@ def analyze_state_transitions(graph, pos, coming_direction):
         if coming_direction == next_dir:
             turn_type = "STRAIGHT (weight 2)"
         elif (coming_direction[0] == -next_dir[0] and coming_direction[1] == -next_dir[1]):
-            turn_type = "BACK (weight 10)"
+            turn_type = "BACK (weight 20)"
         else:
-            turn_type = "TURN (weight 5)" 
+            turn_type = "TURN (weight 10)" 
         
         print(f"{str(next_pos):<15} {next_dir_name:<10} {weight:<8} {turn_type}")
 
