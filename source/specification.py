@@ -32,8 +32,8 @@ YELLOW = (255, 255, 0)
 
 # Weight
 STRAIGHT = 1
-TURN = 10
-BACK = 20
+TURN = 7
+BACK = 14
 
 # Game index
 HAUNTED_POINT_INDEX = 10

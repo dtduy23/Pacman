@@ -81,7 +81,7 @@ def visualize_path_on_map(game_map, path, ghost_pos, player_pos, next_pos=None):
     print(Back.MAGENTA + '.' + Style.RESET_ALL + " - Haunted Point")
     print(Back.WHITE + Fore.BLACK + '#' + Style.RESET_ALL + " - Wall")
 
-if __name__ == "__main__":
+def test_interface():
     # Đơn giản hóa, chỉ load map và tạo graph
     test_map = Map.load_map(MAP_DIR)
     if not test_map:
@@ -137,3 +137,6 @@ if __name__ == "__main__":
     
     print("-" * 90)
     print("Test complete!")
+
+if __name__ == "__main__":
+    test_interface()

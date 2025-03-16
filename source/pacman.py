@@ -729,11 +729,6 @@ class PacmanGame2D:
         pygame.quit()
         sys.exit()
 
-# Khởi chạy game nếu chạy trực tiếp
-if __name__ == "__main__":
-    game = PacmanGame2D()
-    game.run()
-
 # Trong class Map (game_map.py)
 def load_map(cls, file_path):
     try:
@@ -786,3 +781,8 @@ def load_map(cls, file_path):
     except Exception as e:
         print(f"Error loading map from {file_path}: {e}")
         return None
+    
+# Khởi chạy game nếu chạy trực tiếp
+if __name__ == "__main__":
+    game = PacmanGame2D()
+    game.run()

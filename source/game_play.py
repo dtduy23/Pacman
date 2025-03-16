@@ -533,7 +533,7 @@ class GamePlay:
                 time.sleep(sleep_time)
 
 # Run the game if this file is executed directly
-if __name__ == "__main__":
+def game_text():
     os.system('cls' if os.name == 'nt' else 'clear')
     # Try to install keyboard if not available
     try:
@@ -550,3 +550,6 @@ if __name__ == "__main__":
         print("\nGame terminated by user.")
     except Exception as e:
         print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    game_text()

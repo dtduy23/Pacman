@@ -368,12 +368,13 @@ def examine_weights_around_position(graph, pos):
     if not found:
         print("This position doesn't exist in the graph!")
 
-if __name__ == "__main__":
+def view_graph_interactive():
+    """Interactive graph exploration functionality"""
     # Load the map
     map_obj = Map.load_map(MAP_DIR)
     if map_obj is None:
         print("Failed to load map!")
-        exit(1)
+        return
     
     # Create the graph
     map_graph = MapGraph(map_obj)
@@ -403,3 +404,6 @@ if __name__ == "__main__":
             print("Invalid input! Please enter coordinates as 'x,y'")
     
     print("Done!")
+
+if __name__ == "__main__":
+    view_graph_interactive()
