@@ -283,101 +283,150 @@ def manhattan_distance(pos1, pos2):
 
 def A_star_ghost(graph, start_pos, target_pos):
     """
-    A* Search algorithm for orange ghost to find path to player
+    Optimized A* Search algorithm for ghost pathfinding
     Args:
         graph: MapGraph object containing the game map
-        start_pos: Starting position of orange ghost (x,y)
+        start_pos: Starting position of ghost (x,y)
         target_pos: Target position (Pacman's position)
     Returns:
         the list of positions from ghost to player
         the total cost of the path
         the next position for the ghost to move to (first step)
     """
-    # Reset the haunted status counter
-    graph.moves_since_haunted = 0
+    # Create a local copy of haunted points to avoid affecting other algorithms
+    original_haunted_points = set(graph.haunted_points)
     
-    # Priority queue for A*, storing (f_score, g_score, position, direction, path)
+    # Cache for heuristic calculations to avoid redundant calculations
+    heuristic_cache = {}
+    
+    # Dictionary to track haunted state for each path independently
+    haunted_steps = {}
+    
+    # More efficient priority queue initialization
     open_set = []
+    g_scores = {}
+    f_scores = {}
+    came_from = {}  # For efficient path reconstruction
+    
+    # Initialize starting nodes for all possible directions
     for direction in DIRECTIONS:
-        h_score = manhattan_distance(start_pos, target_pos)
-        heapq.heappush(open_set, (
-            h_score,  # f_score = g_score + h_score (g_score is 0 initially)
-            0,        # g_score (cost so far)
-            start_pos,
-            direction,
-            [start_pos]
-        ))
+        state = (start_pos, direction)
+        g_scores[state] = 0
+        f_scores[state] = get_heuristic(start_pos, target_pos, heuristic_cache)
+        haunted_steps[state] = 0
+        heapq.heappush(open_set, (f_scores[state], 0, id(state), state, [start_pos]))  # Using id() to break ties
     
-    # Keep track of best costs to reach each state
-    g_scores = {(start_pos, direction): 0 for direction in DIRECTIONS}
-    
-    # Keep track of visited states to avoid cycles
+    # Set to track closed states
     closed_set = set()
     
+    # Counter for tie-breaking when f_scores are equal
+    counter = 0
+    
     while open_set:
-        f_score, g_score, current_pos, current_direction, path = heapq.heappop(open_set)
+        # Extract state with lowest f_score
+        _, _, _, current_state, path = heapq.heappop(open_set)
+        current_pos, current_direction = current_state
         
-        # If we reached the target
+        # Goal test
         if current_pos == target_pos:
-            # Option 2: Recalculate cost using same method as BFS/DFS
-            # This ensures consistency across all algorithms
-            total_cost = calculate_path_cost(path, graph.haunted_points)
+            # Calculate final cost using consistent method
+            total_cost = calculate_path_cost(path, original_haunted_points)
             
-            # Return the next position if path has more than one position
-            next_pos = path[1] if len(path) > 1 else start_pos
+            # Get next position for ghost movement
+            next_pos = path[1] if len(path) > 1 else current_pos
             return path, total_cost, next_pos
         
-        # Create a state tuple that includes position and direction
-        state = (current_pos, current_direction)
-        
-        # Skip if we've already processed this state
-        if state in closed_set:
+        # Skip if already processed
+        if current_state in closed_set:
             continue
-            
-        # Mark this state as processed
-        closed_set.add(state)
         
-        # Update haunted status when visiting a position
-        # IMPORTANT: Either use update_haunted_status OR handle it in get_neighbors_with_weights
-        # but not both (to avoid double counting)
-        if current_pos in graph.haunted_points:
-            graph.moves_since_haunted = 0  # Reset counter
+        # Add to closed set
+        closed_set.add(current_state)
         
-        # Get neighbors with weights considering current direction
-        neighbors = graph.get_neighbors_with_weights((current_pos, current_direction))
+        # Get current haunted state for this path
+        current_haunted_steps = haunted_steps[current_state]
         
+        # Check if position is a haunted point
+        if current_pos in original_haunted_points:
+            current_haunted_steps = 0  # Reset counter
+        
+        # Get neighbors with weights
+        neighbors = {}
+        raw_neighbors = graph.graph.get(current_state, {})
+        
+        # Apply haunted effect to movement costs if applicable
+        for next_pos, base_weight in raw_neighbors.items():
+            # Apply haunted rule if applicable
+            weight = STRAIGHT if current_haunted_steps < HAUNTED_POINT_INDEX else base_weight
+            neighbors[next_pos] = weight
+        
+        # Process neighbors
         for next_pos, weight in neighbors.items():
-            # Calculate new direction from current to next position
-            next_direction = (
-                next_pos[0] - current_pos[0],
-                next_pos[1] - current_pos[1]
-            )
-            
-            # Create the next state
+            # Calculate direction to next position
+            next_direction = (next_pos[0] - current_pos[0], next_pos[1] - current_pos[1])
             next_state = (next_pos, next_direction)
             
-            # Skip if we've already processed this state
+            # Skip if already processed
             if next_state in closed_set:
                 continue
             
-            # Calculate new g_score (total cost to reach next_pos)
-            new_g_score = g_score + weight
+            # Calculate tentative g_score
+            tentative_g_score = g_scores[current_state] + weight
             
-            # If we found a better path to this state or haven't seen it before
-            if next_state not in g_scores or new_g_score < g_scores[next_state]:
-                # Update the best cost to reach this state
-                g_scores[next_state] = new_g_score
+            # Check if new path is better
+            if next_state not in g_scores or tentative_g_score < g_scores[next_state]:
+                # Update path information
+                g_scores[next_state] = tentative_g_score
                 
-                # Create new path by appending next position
+                # Compute heuristic (cached)
+                h_score = get_heuristic(next_pos, target_pos, heuristic_cache)
+                
+                # Update f_score
+                f_score = tentative_g_score + h_score
+                f_scores[next_state] = f_score
+                
+                # Update haunted steps for this path
+                haunted_steps[next_state] = current_haunted_steps + 1
+                
+                # Construct new path
                 new_path = path + [next_pos]
                 
-                # Calculate heuristic (Manhattan distance to target)
-                h_score = manhattan_distance(next_pos, target_pos)
+                # Increase counter for tie-breaking
+                counter += 1
                 
-                # Calculate f_score = g_score + h_score
-                new_f_score = new_g_score + h_score
-                
-                # Add to open set with updated scores
-                heapq.heappush(open_set, (new_f_score, new_g_score, next_pos, next_direction, new_path))
+                # Add to open set
+                heapq.heappush(open_set, (f_score, tentative_g_score, counter, next_state, new_path))
     
-    return None, None, None  # No path found
+    # No path found
+    return None, None, None
+
+def get_heuristic(pos, target, cache=None):
+    """
+    Optimized and more informative heuristic function.
+    Uses caching to avoid redundant calculations.
+    
+    Args:
+        pos: Current position
+        target: Target position
+        cache: Optional dictionary for caching results
+    
+    Returns:
+        Heuristic value (estimated cost to target)
+    """
+    # Use cache if provided
+    if cache is not None:
+        key = (pos, target)
+        if key in cache:
+            return cache[key]
+    
+    # Base Manhattan distance
+    distance = abs(pos[0] - target[0]) + abs(pos[1] - target[1])
+    
+    # Scale by minimum movement cost for admissibility
+    h_value = distance * STRAIGHT
+    
+    # Store in cache if provided
+    if cache is not None:
+        cache[(pos, target)] = h_value
+    
+    return h_value
