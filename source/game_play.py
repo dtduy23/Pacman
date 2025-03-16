@@ -14,6 +14,8 @@ import sys
 # Initialize colorama
 colorama.init(autoreset=True)
 
+
+
 class GamePlay:
     def __init__(self, map_dir=MAP_DIR):
         """Initialize game with a map"""
@@ -122,6 +124,8 @@ class GamePlay:
 
         for y, row in enumerate(self.map_display):
             for x, cell in enumerate(row):
+                sys.stdout.write("\033[?25l")
+                sys.stdout.flush()
                 pos = (x, y)
 
                 # Xác định ký tự hiển thị
@@ -184,7 +188,7 @@ class GamePlay:
 
             haunted_status = ""
             if ghost.get('is_haunted', False):
-                haunted_status = f" (Haunted: {ghost.get('haunted_steps_remaining', 0)} bước còn lại)"
+                haunted_status = f" (Haunted: {ghost.get('haunted_steps_remaining', 0)} bước còn lại)      "
 
                 sys.stdout.write(f"\033[{line};{right_x}H{ghost['color']}{ghost['letter']}{Style.RESET_ALL}: {move_str} - {update_interval:.2f}s{haunted_status}")
             line += 1
