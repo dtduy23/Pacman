@@ -45,7 +45,7 @@ project1/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/pacman-ai.git
+git https://github.com/dtduy23/Pacman.git
 cd project1
 ```
 
