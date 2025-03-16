@@ -2,19 +2,32 @@ from specification import *
 from game_map import Map
 from algorithm import UCS_ghost, BFS_ghost, DFS_ghost, A_star_ghost
 from map_implement import MapGraph
-import os
 import time
 import colorama
 from colorama import Fore, Back, Style
+import tracemalloc
 
 def test_algorithm(name, algorithm, graph, start_pos, target_pos):
     """Test pathfinding algorithm and display results"""
     print(f"Testing {name}...")
+    
+    # Bắt đầu theo dõi bộ nhớ
+    tracemalloc.start()
     start_time = time.time()
     
     # Updated to handle the third return value (next position)
     path, cost, next_pos = algorithm(graph, start_pos, target_pos)
+    
+    # Lấy thời gian thực thi
     execution_time = time.time() - start_time
+    
+    # Lấy thông tin sử dụng bộ nhớ
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()  # Dừng theo dõi bộ nhớ
+    
+    # Chuyển đổi sang MB để dễ đọc
+    current_mb = current / 1024 / 1024
+    peak_mb = peak / 1024 / 1024
     
     if path:
         # Convert path to set of positions
@@ -23,11 +36,14 @@ def test_algorithm(name, algorithm, graph, start_pos, target_pos):
         print(f"  Next position: {next_pos}")
         print(f"  Unique positions visited: {len(set(path_list))}")
         print(f"  Execution time: {execution_time:.6f} seconds")
+        print(f"  Memory usage: current={current_mb:.4f} MB, peak={peak_mb:.4f} MB")
     else:
         print("  No path found")
+        print(f"  Execution time: {execution_time:.6f} seconds")
+        print(f"  Memory usage: current={current_mb:.4f} MB, peak={peak_mb:.4f} MB")
         path_list = []
     
-    return path, cost, path_list, next_pos
+    return path, cost, path_list, next_pos, current_mb, peak_mb
 
 def visualize_path_on_map(game_map, path, ghost_pos, player_pos, next_pos=None):
     """
@@ -113,9 +129,9 @@ def test_interface():
     ]
     
     # In kết quả dưới dạng bảng đơn giản
-    print("\n" + "-" * 90)
-    print(f"{'Algorithm':<8} {'Steps':<8} {'Total Cost':<12} {'Next Position':<15} {'Unique Positions'}")
-    print("-" * 90)
+    print("\n" + "-" * 115)
+    print(f"{'Algorithm':<8} {'Steps':<8} {'Total Cost':<12} {'Next Position':<15} {'Unique Pos':<12} {'Time (s)':<12} {'Memory (MB)'}")
+    print("-" * 115)
     
     for name, algo in algorithms:
         # Reset graph state cho fair comparison
@@ -124,18 +140,28 @@ def test_interface():
         if hasattr(graph, 'haunted_points'):
             graph.haunted_points = set(test_map.haunted_points)
             
-        path, cost, path_list, next_pos = test_algorithm(name, algo, graph, ghost_pos, player_pos)
+        path, cost, path_list, next_pos, current_mb, peak_mb = test_algorithm(name, algo, graph, ghost_pos, player_pos)
         
         # Hiển thị kết quả trong bảng - chuyển next_pos thành chuỗi để tránh lỗi định dạng
         next_pos_str = str(next_pos) if next_pos else 'N/A'
-        print(f"{name:<8} {len(path) if path else 'N/A':<8} {cost if cost else 'N/A':<12} {next_pos_str:<15} {len(set(path_list)) if path_list else 0}")
+        unique_pos = len(set(path_list)) if path_list else 0
+        steps = len(path) if path else 'N/A'
+        
+        # Tính thời gian thực thi (giả định là bạn đã tính trong test_algorithm)
+        if hasattr(algo, 'execution_time'):
+            exec_time = algo.execution_time
+        else:
+            exec_time = 'N/A'
+            
+        # Format chuỗi hiển thị
+        print(f"{name:<8} {steps:<8} {cost if cost else 'N/A':<12} {next_pos_str:<15} {unique_pos:<12} {exec_time:<12} {peak_mb:.4f}")
         
         # Visualize path on map with colors
         if path:
             visualize_path_on_map(test_map, path, ghost_pos, player_pos, next_pos)
             choice = input(f"\nPress Enter to continue to the next algorithm...")
     
-    print("-" * 90)
+    print("-" * 115)
     print("Test complete!")
 
 if __name__ == "__main__":
